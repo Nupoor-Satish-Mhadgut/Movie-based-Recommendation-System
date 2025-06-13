@@ -9,6 +9,18 @@ import os
 import zipfile
 from io import BytesIO
 
+st.write("## Debug Information")
+st.write("Current directory:", os.getcwd())
+st.write("Files in .streamlit:", os.listdir(".streamlit"))
+
+try:
+    st.write("Secrets contents:", dict(st.secrets))
+    st.success("API Key loaded successfully!")
+    TMDB_API_KEY = st.secrets["TMDB_API_KEY"]
+except Exception as e:
+    st.error(f"Error: {str(e)}")
+    st.warning("Make sure your secrets.toml has [secrets] section header")
+
 # --- Configuration ---
 POSTER_BASE_URL = "https://image.tmdb.org/t/p/w500"
 DEFAULT_POSTER = "https://via.placeholder.com/150x225?text=No+Poster"
