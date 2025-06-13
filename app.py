@@ -15,17 +15,25 @@ DEFAULT_POSTER = "https://via.placeholder.com/150x225?text=No+Poster"
 TMDB_API_KEY = st.secrets["TMDB_API_KEY"]  # Set in Streamlit Cloud secrets
 
 # --- Data Loading ---
+# Add this at the beginning of your load_data() function
 @st.cache_data
 def load_data():
-    # Download and extract MovieLens small dataset
-    if not os.path.exists("data"):
-        os.makedirs("data")
+    try:
+        if not os.path.exists("data"):
+            os.makedirs("data")
+        
+        if not os.path.exists("data/ml-latest-small"):
+            st.info("Downloading MovieLens dataset...")
+            url = "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"
+            response = requests.get(url, timeout=30)
+            with zipfile.ZipFile(BytesIO(response.content)) as zip_ref:
+                zip_ref.extractall("data")
+            st.success("Dataset downloaded successfully!")
+    except Exception as e:
+        st.error(f"Error downloading dataset: {e}")
+        return None, None
     
-    if not os.path.exists("data/ml-latest-small"):
-        url = "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"
-        response = requests.get(url)
-        with zipfile.ZipFile(BytesIO(response.content)) as zip_ref:
-            zip_ref.extractall("data")
+    # Rest of your loading code...
     
     # Load movies data
     movies = pd.read_csv("data/ml-latest-small/movies.csv")
