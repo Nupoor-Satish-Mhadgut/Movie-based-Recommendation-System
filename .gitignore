@@ -39,4 +39,4 @@ ml-latest-small/
 *.zip
 
 # Secrets
-secrets.toml
+.streamlit/secrets.toml
