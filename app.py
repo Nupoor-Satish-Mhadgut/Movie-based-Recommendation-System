@@ -78,7 +78,7 @@ def movie_card(movie):
         # Poster image (centered)
         st.image(
             trailer['thumbnail'], 
-            use_column_width=True,
+            use_container_width=True,
             output_format="JPEG",
             caption=movie['title']  # Title appears centered below image
         )
