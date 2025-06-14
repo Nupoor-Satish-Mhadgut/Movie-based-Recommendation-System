@@ -40,3 +40,5 @@ ml-latest-small/
 
 # Secrets
 .streamlit/secrets.toml
+*.env
+.streamlit/.env
