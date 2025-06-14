@@ -10,7 +10,7 @@ import os
 # --- Constants ---
 DEFAULT_THUMBNAIL = "https://via.placeholder.com/300x450?text=No+Poster"
 MOVIELENS_URL = "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"
-YOUTUBE_API_KEY = "AIzaSyD-OV1x8vGmz-swPvEeFI3MOYMFNplb1RY"  # Replace with your actual key
+YOUTUBE_API_KEY = st.secrets["api_keys"]["youtube"]  # Replace with your actual key
 
 # --- Data Loading ---
 @st.cache_data
