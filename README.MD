@@ -2,7 +2,7 @@
 
 A Streamlit-powered web app that recommends similar movies and displays their YouTube trailers instantly. Perfect for film enthusiasts!
 
-![App Screenshot](./assets/screenshot.png) *(Add a screenshot later)*
+
 
 ## ✨ Features
 
@@ -42,18 +42,19 @@ A Streamlit-powered web app that recommends similar movies and displays their Yo
 
 2. **Install dependencies**:
 
-bash
-pip install -r requirements.txt
+   ```bash
+   pip install -r requirements.txt
 
 3. **Add your API key**:
 
-Create .streamlit/secrets.toml and add:
+   Create .streamlit/secrets.toml and add:
 
-toml
-[api_keys]
-youtube = "YOUR_YOUTUBE_API_KEY"
+   toml
+   [api_keys]
+   YOUTUBE_API_KEY = "YOUR_YOUTUBE_API_KEY"
+   OMDB_API_KEY = "your_omdb_key_here"
 
 4. **Run locally**:
 
-bash
-streamlit run app.py
+   ```bash
+   streamlit run app.py
