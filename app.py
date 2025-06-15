@@ -170,6 +170,23 @@ def get_movie_media(movie):
         'trailer': get_best_trailer(movie['title'], movie.get('year'))
     }
 
+def display_compatible_image(image_url):
+    """Display image that works both locally and on Streamlit Cloud"""
+    try:
+        # First try the Cloud-compatible way
+        st.image(
+            image_url,
+            use_column_width='auto',
+            output_format="JPEG"
+        )
+    except:
+        # Fallback for local development
+        st.image(
+            image_url,
+            width=300,  # Adjust this as needed
+            output_format="JPEG"
+        )
+
 # --- Enhanced UI Components ---
 def movie_card(movie):
     media = get_movie_media(movie)
@@ -199,12 +216,8 @@ def movie_card(movie):
             unsafe_allow_html=True
         )
         
-        # Poster with rounded corners
-        st.image(
-            media['poster'],
-            use_column_width=True,
-            output_format="JPEG"
-        )
+        # Poster with cross-environment compatibility
+        display_compatible_image(media['poster'])
         
         # Movie title with gradient text
         st.markdown(
@@ -313,7 +326,7 @@ def main():
             }
         </style>
         <div class="header">
-            <h1>🎬 Movie Recommendation Engine</h1>
+            <h1>🎬 Nupoor Mhadgut's Movie Recommendation Engine</h1>
             <p>Discover your next favorite film with AI-powered suggestions</p>
         </div>
         """,
