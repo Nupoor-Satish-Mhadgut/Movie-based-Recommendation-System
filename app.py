@@ -43,6 +43,8 @@ def load_data():
         movies = pd.read_csv("data/ml-latest-small/movies.csv")
         movies['genres'] = movies['genres'].str.replace('|', ' ')
         movies['year'] = movies['title'].str.extract(r'\((\d{4})\)')
+        # Clean titles with apostrophes
+        movies['display_title'] = movies['title'].str.replace(r"^'", "‘").str.replace(r"'([^s]|s[^ ])", "’\\1")
         return movies
     
     except Exception as e:
@@ -170,23 +172,6 @@ def get_movie_media(movie):
         'trailer': get_best_trailer(movie['title'], movie.get('year'))
     }
 
-def display_compatible_image(image_url):
-    """Display image that works both locally and on Streamlit Cloud"""
-    try:
-        # Try the newer container width parameter first
-        st.image(
-            image_url,
-            use_container_width=True,
-            output_format="JPEG"
-        )
-    except:
-        # Fallback to fixed width if needed
-        st.image(
-            image_url,
-            width=300,
-            output_format="JPEG"
-        )
-
 # --- Enhanced UI Components ---
 def movie_card(movie):
     media = get_movie_media(movie)
@@ -216,8 +201,12 @@ def movie_card(movie):
             unsafe_allow_html=True
         )
         
-        # Poster with cross-environment compatibility
-        display_compatible_image(media['poster'])
+        # Poster with container width
+        st.image(
+            media['poster'],
+            use_container_width=True,
+            output_format="JPEG"
+        )
         
         # Movie title with gradient text
         st.markdown(
@@ -231,7 +220,7 @@ def movie_card(movie):
                 font-size: 1.2rem;
                 font-weight: 600;
             '>
-                {movie['title']}
+                {movie['display_title']}
             </h3>
             """,
             unsafe_allow_html=True
@@ -336,6 +325,12 @@ def main():
                 transform: translateY(-50%);
                 pointer-events: none;
             }
+            /* Image container styling */
+            .stImage img {
+                border-radius: 8px;
+                max-width: 100%;
+                height: auto;
+            }
         </style>
         <div class="header">
             <h1>🎬 Movie Recommendation Engine</h1>
@@ -362,7 +357,7 @@ def main():
     selected = st.selectbox(
         "🎞️ Select a movie you like:",
         movies['title'].sort_values(),
-        index=movies['title'].tolist().index("Inception (2010)") if "Inception (2010)" in movies['title'].values else 0,
+        index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0,
         help="Start typing to search through 9,000+ movies"
     )
     
@@ -372,7 +367,7 @@ def main():
             sim_scores = list(enumerate(cosine_sim[idx]))
             sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:num_recs+1]
             
-            st.markdown(f"## 🎯 Similar to: **{selected}**")
+            st.markdown(f"## 🎯 Similar to: **{movies.iloc[idx]['display_title']}**")
             cols = st.columns(min(3, len(sim_scores)))
             
             for i, (idx, score) in enumerate(sim_scores):
