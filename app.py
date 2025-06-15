@@ -173,17 +173,17 @@ def get_movie_media(movie):
 def display_compatible_image(image_url):
     """Display image that works both locally and on Streamlit Cloud"""
     try:
-        # First try the Cloud-compatible way
+        # Try the newer container width parameter first
         st.image(
             image_url,
-            use_column_width='auto',
+            use_container_width=True,
             output_format="JPEG"
         )
     except:
-        # Fallback for local development
+        # Fallback to fixed width if needed
         st.image(
             image_url,
-            width=300,  # Adjust this as needed
+            width=300,
             output_format="JPEG"
         )
 
@@ -324,9 +324,21 @@ def main():
                 opacity: 0.9;
                 margin-top: 0.5rem;
             }
+            /* Make selectbox dropdown arrow point down */
+            div[data-baseweb="select"] > div:first-child {
+                padding-right: 2.5rem;
+            }
+            div[data-baseweb="select"] > div:first-child > div:after {
+                content: "▼";
+                position: absolute;
+                top: 50%;
+                right: 0.5rem;
+                transform: translateY(-50%);
+                pointer-events: none;
+            }
         </style>
         <div class="header">
-            <h1>🎬 Nupoor Mhadgut's Movie Recommendation Engine</h1>
+            <h1>🎬 Movie Recommendation Engine</h1>
             <p>Discover your next favorite film with AI-powered suggestions</p>
         </div>
         """,
@@ -346,6 +358,7 @@ def main():
         st.markdown("---")
         st.markdown("Built with ❤️ by [Nupoor Mhadgut]")
     
+    # Selectbox with downward-pointing arrow
     selected = st.selectbox(
         "🎞️ Select a movie you like:",
         movies['title'].sort_values(),
