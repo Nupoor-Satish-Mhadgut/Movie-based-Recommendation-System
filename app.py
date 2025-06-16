@@ -43,15 +43,15 @@ def load_data():
         
         movies = pd.read_csv("data/ml-latest-small/movies.csv")
         movies['genres'] = movies['genres'].str.replace('|', ' ')
-        movies['year'] = movies['title'].str.extract(r'\((\d{4})\)')  # Fixed Line 47 parentheses
+        movies['year'] = movies['title'].str.extract(r'\((\d{4})\)')
         movies['display_title'] = movies['title'].apply(
             lambda x: html.escape(re.sub(r'\(\d{4}\)', '', x).strip())
         )
         return movies
-    except Exception as e:  # Added missing except clause for Line 34
+    except Exception as e:
         st.error(f"🚨 Error loading data: {str(e)}")
         return None
-    
+
 # --- API Functions ---
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=10))
 def fetch_youtube_trailer(title):
@@ -244,15 +244,14 @@ def movie_card(movie):
 def main():
     st.set_page_config(
         layout="wide",
-        page_title="🎬 Nupoor Mhadgut's Movie Recommendation Engine",
+        page_title="🎬 Movie Recommendation Engine",
         page_icon="🎥"
     )
     
+    # Custom CSS with stronger dropdown arrow styling
     st.markdown("""
     <style>
-        div[data-baseweb="select"] > div:first-child {
-            padding-right: 2.5rem !important;
-        }
+        /* Force permanent downward arrow */
         div[data-baseweb="select"] > div:first-child > div:after {
             content: "▼" !important;
             position: absolute !important;
@@ -262,6 +261,13 @@ def main():
             pointer-events: none !important;
             font-size: 12px !important;
         }
+        
+        /* Prevent arrow flip when open */
+        div[data-baseweb="select"] > div:first-child > div[aria-expanded="true"]:after {
+            transform: translateY(-50%) rotate(0deg) !important;
+        }
+        
+        /* Header styling */
         .header {
             background: linear-gradient(135deg, #6e48aa 0%, #9d50bb 100%);
             padding: 2rem;
@@ -269,16 +275,14 @@ def main():
             margin-bottom: 2rem;
             color: white;
         }
-        div[data-baseweb="select"] {
-            z-index: 0 !important;
-        }
     </style>
     <div class="header">
-        <h1 style='text-align: center; margin: 0;'>🎬 Nupoor Mhadgut's Movie Recommendation Engine</h1>
+        <h1 style='text-align: center; margin: 0;'>🎬 Movie Recommendation Engine</h1>
         <p style='text-align: center; margin: 0.5rem 0 0;'>Discover your next favorite film</p>
     </div>
     """, unsafe_allow_html=True)
     
+    # Load data
     movies = load_data()
     if movies is None:
         st.stop()
@@ -289,8 +293,9 @@ def main():
         st.markdown("### 🎛️ Controls")
         num_recs = st.slider("Number of recommendations", 3, 10, 5)
         st.markdown("---")
-        st.markdown("Built with ❤️ by [Nupoor Mhadgut]")
+        st.markdown("Built with ❤️ by Nupoor Mhadgut")
     
+    # Movie selection with permanent downward arrow
     selected = st.selectbox(
         "🎞️ Select a movie you like:",
         movies['title'].sort_values(),
@@ -299,17 +304,17 @@ def main():
     )
     
     if st.button("🔍 Find Similar Movies", type="primary"):
-     with st.spinner("Finding recommendations..."):
-        idx = movies[movies['title'] == selected].index[0]
-        sim_scores = list(enumerate(cosine_sim[idx]))
-        sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:num_recs+1]
-        
-        st.markdown(f"## 🎯 Similar to: **{movies.iloc[idx]['display_title']} ({movies.iloc[idx]['year']})**")
-        cols = st.columns(min(3, len(sim_scores)))  # Fixed Line 314 statement separation
-        
-        for i, (idx, score) in enumerate(sim_scores):
-            with cols[i % len(cols)]:
-                movie_card(movies.iloc[idx])
+        with st.spinner("Finding recommendations..."):
+            idx = movies[movies['title'] == selected].index[0]
+            sim_scores = list(enumerate(cosine_sim[idx]))
+            sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:num_recs+1]
+            
+            st.markdown(f"## 🎯 Similar to: **{movies.iloc[idx]['display_title']} ({movies.iloc[idx]['year']})**")
+            cols = st.columns(min(3, len(sim_scores)))
+            
+            for i, (idx, score) in enumerate(sim_scores):
+                with cols[i % len(cols)]:
+                    movie_card(movies.iloc[idx])
 
 if __name__ == "__main__":
     main()
