@@ -234,9 +234,6 @@ def get_movie_media(movie):
     }
 
 
-
-
-
 def movie_card(movie):
     media = get_movie_media(movie)
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
@@ -245,46 +242,48 @@ def movie_card(movie):
     components.html(f"""
     <style>
         .movie-card {{
-            width: 150px;
-            margin: 0 10px 20px 0;
+            width: 160px;  /* Slightly wider than Netflix */
+            margin: 0 15px 25px 0;
             position: relative;
-            transition: transform 0.3s;
+            transition: all 0.3s ease;
             display: inline-block;
         }}
         .movie-card:hover {{
             transform: scale(1.1);
-            z-index: 2;
+            z-index: 10;
         }}
         .movie-poster {{
             width: 100%;
-            height: 225px;
+            height: 240px;  /* Standard streaming service aspect ratio */
             object-fit: cover;
             border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }}
         .movie-info {{
-            display: none;
+            opacity: 0;
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            background: rgba(0,0,0,0.8);
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
             color: white;
-            padding: 10px;
+            padding: 15px 10px 10px;
             border-radius: 0 0 4px 4px;
+            transition: opacity 0.3s ease;
         }}
         .movie-card:hover .movie-info {{
-            display: block;
+            opacity: 1;
         }}
         .movie-title {{
-            font-weight: bold;
-            font-size: 12px;
+            font-weight: 600;
+            font-size: 14px;
             margin-bottom: 5px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }}
         .movie-meta {{
-            font-size: 10px;
+            font-size: 11px;
             color: #d2d2d2;
             margin-bottom: 8px;
         }}
@@ -292,11 +291,13 @@ def movie_card(movie):
             background: #e50914;
             color: white;
             border: none;
-            padding: 5px 10px;
+            padding: 6px 0;
             border-radius: 3px;
-            font-size: 10px;
-            cursor: pointer;
+            font-size: 12px;
             width: 100%;
+            text-align: center;
+            display: block;
+            text-decoration: none;
         }}
     </style>
 
@@ -308,60 +309,76 @@ def movie_card(movie):
             {f'<a href="{trailer["url"]}" target="_blank" class="trailer-btn">▶ Play</a>' if trailer else ''}
         </div>
     </div>
-    """, height=250)
+    """, height=260)  # Matches the card height
 
 def main():
     st.set_page_config(layout="wide", page_title="Movie Recommendations", page_icon="🎬")
-    
+
+    # Load data
+    movies = load_data()
+    if movies is None:
+        st.stop()
+
+    # Prepare similarity matrix
+    cosine_sim = prepare_model(movies)
+
     st.markdown("""
     <style>
-        .row-container {{
+        .row-container {
             display: flex;
             overflow-x: auto;
-            padding: 10px 0;
+            padding: 15px 20px;
             background: #141414;
             margin-bottom: 30px;
-        }}
-        .row-container::-webkit-scrollbar {{
+            gap: 5px;
+        }
+        .row-container::-webkit-scrollbar {
             display: none;
-        }}
-        .row-title {{
+        }
+        .row-title {
             color: white;
-            font-size: 1.2rem;
-            margin: 10px 0 5px 0;
-            padding-left: 20px;
-        }}
+            font-size: 1.3rem;
+            font-weight: 500;
+            margin: 5px 0 0 20px;
+            padding-top: 10px;
+        }
+        body {
+            background-color: #141414;
+        }
     </style>
+    <div style="background-color: #141414; padding-bottom: 20px;">
     """, unsafe_allow_html=True)
-    
-    movies = load_data()
-    if movies is None: 
-        st.stop()
-    
-    cosine_sim = prepare_model(movies)
-    
+
+    # Sidebar controls
     with st.sidebar:
         st.markdown("### 🎛️ Controls")
         num_recs = st.slider("Number of recommendations", 3, 10, 5)
-        st.markdown("---")
-        st.markdown("ℹ️ Select a movie and click below")
-    
-    selected = st.selectbox(
-        "🎞️ Select a movie you like:",
-        movies['title'].sort_values(),
-        index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0
-    )
-    
+        selected = st.selectbox(
+            "🎞️ Select a movie you like:",
+            movies['title'].sort_values(),
+            index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0
+        )
+
     if st.button("🔍 Find Similar Movies"):
         with st.spinner("Finding recommendations..."):
             idx = movies[movies['title'] == selected].index[0]
-            sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
-            
-            st.markdown(f'<div class="row-title">Similar to {movies.iloc[idx]["display_title"]}</div>', unsafe_allow_html=True)
+            sim_scores = sorted(
+                list(enumerate(cosine_sim[idx])),
+                key=lambda x: x[1],
+                reverse=True
+            )[1:num_recs+1]
+
+            st.markdown(
+                f'<div class="row-title">Because you watched: {movies.iloc[idx]["display_title"]}</div>',
+                unsafe_allow_html=True
+            )
             st.markdown('<div class="row-container">', unsafe_allow_html=True)
-            for idx, score in sim_scores:
-                movie_card(movies.iloc[idx])
+            for sim_idx, _ in sim_scores:
+                movie_card(movies.iloc[sim_idx])
             st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)  # Close outer container
+
 
 if __name__ == "__main__":
     main()
