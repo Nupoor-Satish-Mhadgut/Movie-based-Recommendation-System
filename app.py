@@ -8,9 +8,10 @@ from io import BytesIO
 import os
 from tenacity import retry, stop_after_attempt, wait_exponential
 import re
+import html
 
 # --- Constants ---
-DEFAULT_THUMBNAIL = "https://via.placeholder.com/300x450?text=No+Poster"
+DEFAULT_THUMBNAIL = "https://via.placeholder.com/300x450.png?text=No+Poster"
 MOVIELENS_URL = "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"
 
 # --- API Configuration ---
@@ -34,7 +35,7 @@ def load_data():
         os.makedirs("data", exist_ok=True)
         
         if not os.path.exists("data/ml-latest-small/movies.csv"):
-            with st.spinner("📦 Downloading MovieLens dataset (this may take a minute)..."):
+            with st.spinner("📦 Downloading MovieLens dataset..."):
                 response = requests.get(MOVIELENS_URL, timeout=30)
                 response.raise_for_status()
                 with zipfile.ZipFile(BytesIO(response.content)) as z:
@@ -43,8 +44,11 @@ def load_data():
         movies = pd.read_csv("data/ml-latest-small/movies.csv")
         movies['genres'] = movies['genres'].str.replace('|', ' ')
         movies['year'] = movies['title'].str.extract(r'\((\d{4})\)')
-        # Clean titles with apostrophes
-        movies['display_title'] = movies['title'].str.replace(r"^'", "‘").str.replace(r"'([^s]|s[^ ])", "’\\1")
+        
+        # Clean titles with special characters
+        movies['display_title'] = movies['title'].apply(
+            lambda x: html.escape(re.sub(r'\(\d{4}\)', '', x).strip())
+        )
         return movies
     
     except Exception as e:
@@ -57,10 +61,11 @@ def fetch_youtube_trailer(title):
     if not YOUTUBE_API_KEY:
         return None
     try:
+        clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
         response = requests.get(
             "https://www.googleapis.com/youtube/v3/search",
             params={
-                "q": f"{title} official trailer",
+                "q": f"{clean_title} official trailer",
                 "part": "snippet",
                 "key": YOUTUBE_API_KEY,
                 "maxResults": 1,
@@ -79,7 +84,8 @@ def fetch_youtube_trailer(title):
 
 def fetch_itunes_trailer(title, year=None):
     try:
-        query = f"{title} {year}" if year else title
+        clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
+        query = f"{clean_title} {year}" if year else clean_title
         response = requests.get(
             "https://itunes.apple.com/search",
             params={
@@ -105,7 +111,7 @@ def get_best_trailer(title, year):
             'url': youtube_url,
             'source': 'youtube',
             'button_color': '#FF0000',
-            'badge': '🎥 YouTube'
+            'badge': 'YouTube'
         }
     
     itunes_url = fetch_itunes_trailer(title, year)
@@ -114,35 +120,37 @@ def get_best_trailer(title, year):
             'url': itunes_url,
             'source': 'itunes',
             'button_color': '#000000',
-            'badge': '🍎 iTunes'
+            'badge': 'iTunes'
         }
     
     return None
 
-def fetch_omdb_poster(title, year):
-    if not OMDB_API_KEY:
-        return None
+def fetch_poster(title, year):
+    # Try OMDB first
+    if OMDB_API_KEY:
+        try:
+            clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
+            response = requests.get(
+                "http://www.omdbapi.com/",
+                params={
+                    "t": clean_title,
+                    "y": year,
+                    "apikey": OMDB_API_KEY,
+                    "r": "json"
+                },
+                timeout=5
+            )
+            response.raise_for_status()
+            data = response.json()
+            if data.get('Poster') and data['Poster'] != 'N/A':
+                return data['Poster']
+        except:
+            pass
+    
+    # Fallback to iTunes
     try:
-        clean_title = re.sub(r'\([^)]*\)', '', title).strip()
-        response = requests.get(
-            "http://www.omdbapi.com/",
-            params={
-                "t": clean_title,
-                "y": year,
-                "apikey": OMDB_API_KEY,
-                "r": "json"
-            },
-            timeout=5
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data.get('Poster') if data.get('Poster') != 'N/A' else None
-    except:
-        return None
-
-def fetch_itunes_poster(title, year=None):
-    try:
-        query = f"{title} {year}" if year else title
+        clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
+        query = f"{clean_title} {year}" if year else clean_title
         response = requests.get(
             "https://itunes.apple.com/search",
             params={
@@ -163,128 +171,86 @@ def fetch_itunes_poster(title, year=None):
 
 @st.cache_data(ttl=3600)
 def get_movie_media(movie):
-    poster = fetch_omdb_poster(movie['title'], movie.get('year')) if OMDB_API_KEY else None
-    if not poster:
-        poster = fetch_itunes_poster(movie['title'], movie.get('year'))
-    
+    poster = fetch_poster(movie['title'], movie.get('year'))
     return {
         'poster': poster if poster else DEFAULT_THUMBNAIL,
         'trailer': get_best_trailer(movie['title'], movie.get('year'))
     }
 
-# --- Enhanced UI Components ---
+# --- UI Components ---
 def movie_card(movie):
     media = get_movie_media(movie)
     
-    with st.container():
-        # Card container with shadow and hover effect
-        st.markdown(
-            """
-            <style>
-                .movie-card {
-                    border-radius: 12px;
-                    border: 1px solid #e0e0e0;
-                    padding: 16px;
-                    margin-bottom: 24px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-                    transition: transform 0.3s, box-shadow 0.3s;
-                    height: 100%;
-                    background: white;
-                }
-                .movie-card:hover {
-                    transform: translateY(-5px);
-                    box-shadow: 0 8px 16px rgba(0,0,0,0.12);
-                }
-            </style>
-            <div class="movie-card">
-            """,
-            unsafe_allow_html=True
-        )
+    card_html = f"""
+    <div style='
+        border-radius: 12px;
+        border: 1px solid #e0e0e0;
+        padding: 16px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        transition: transform 0.3s, box-shadow 0.3s;
+        height: 100%;
+        background: white;
+        display: flex;
+        flex-direction: column;
+    '>
+        <img src='{media["poster"]}' 
+             style='
+                 width: 100%;
+                 height: auto;
+                 border-radius: 8px;
+                 aspect-ratio: 2/3;
+                 object-fit: contain;
+                 background: #f5f5f5;
+             '>
         
-        # Poster with container width
-        st.image(
-            media['poster'],
-            use_container_width=True,
-            output_format="JPEG"
-        )
+        <h3 style='
+            text-align: center;
+            margin: 12px 0 4px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        '>
+            {movie['display_title']} ({movie['year']})
+        </h3>
         
-        # Movie title with gradient text
-        st.markdown(
-            f"""
-            <h3 style='
-                text-align: center;
-                margin: 12px 0 8px;
-                background: linear-gradient(45deg, #6e48aa, #9d50bb);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                font-size: 1.2rem;
-                font-weight: 600;
-            '>
-                {movie['display_title']}
-            </h3>
-            """,
-            unsafe_allow_html=True
-        )
-        
-        # Genres as stylish pills
-        genres = movie['genres'].split()[:3]  # Show max 3 genres
-        genre_pills = "".join(
-            f"""
-            <span style='
-                background: #f0f2f6;
-                border-radius: 16px;
-                padding: 4px 12px;
-                margin: 4px;
-                font-size: 0.75rem;
+        <div style='
+            text-align: center; 
+            margin: 4px 0 12px; 
+            color: #666; 
+            font-size: 0.9rem;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        '>
+            {', '.join(movie['genres'].split()[:3])}
+        </div>
+    """
+    
+    if media['trailer']:
+        card_html += f"""
+        <div style='text-align: center; margin-top: auto;'>
+            <a href='{media["trailer"]["url"]}' target='_blank' 
+            style='
                 display: inline-block;
-                color: #555;
-            '>{g}</span>
-            """ for g in genres
-        )
-        
-        st.markdown(
-            f"""
-            <div style='text-align: center; margin: 12px 0; line-height: 2;'>
-                {genre_pills}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        
-        # Dynamic trailer button
-        if media['trailer']:
-            btn_style = f"""
-                background: {media['trailer']['button_color']};
+                background: {media["trailer"]["button_color"]};
                 color: white;
-                padding: 10px 20px;
+                padding: 8px 16px;
                 border-radius: 50px;
                 text-decoration: none;
                 font-weight: 600;
                 font-size: 0.9rem;
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-                transition: all 0.3s;
-                width: fit-content;
-                margin: 0 auto;
-            """
-            
-            st.markdown(
-                f"""
-                <div style='text-align: center; margin: 16px 0 8px;'>
-                    <a href='{media['trailer']['url']}' target='_blank' style='{btn_style}'>
-                        <span>▶ Play Trailer</span>
-                        <span style='font-size: 1rem;'>{media['trailer']['badge']}</span>
-                    </a>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        
-        st.markdown("</div>", unsafe_allow_html=True)  # Close card
+            '>
+                ▶ Watch Trailer ({media["trailer"]["badge"]})
+            </a>
+        </div>
+        """
+    
+    card_html += "</div>"
+    st.markdown(card_html, unsafe_allow_html=True)
 
-# --- Main App with Professional Header ---
+# --- Main App ---
 def main():
     st.set_page_config(
         layout="wide",
@@ -292,55 +258,44 @@ def main():
         page_icon="🎥"
     )
     
-    # Custom header with gradient
-    st.markdown(
-        """
-        <style>
-            .header {
-                background: linear-gradient(135deg, #6e48aa 0%, #9d50bb 100%);
-                padding: 3rem 2rem;
-                border-radius: 12px;
-                margin-bottom: 2.5rem;
-                color: white;
-            }
-            .header h1 {
-                font-size: 2.8rem;
-                margin: 0;
-                text-align: center;
-            }
-            .header p {
-                text-align: center;
-                opacity: 0.9;
-                margin-top: 0.5rem;
-            }
-            /* Make selectbox dropdown arrow point down */
-            div[data-baseweb="select"] > div:first-child {
-                padding-right: 2.5rem;
-            }
-            div[data-baseweb="select"] > div:first-child > div:after {
-                content: "▼";
-                position: absolute;
-                top: 50%;
-                right: 0.5rem;
-                transform: translateY(-50%);
-                pointer-events: none;
-            }
-            /* Image container styling */
-            .stImage img {
-                border-radius: 8px;
-                max-width: 100%;
-                height: auto;
-            }
-        </style>
-        <div class="header">
-            <h1>🎬 Movie Recommendation Engine</h1>
-            <p>Discover your next favorite film with AI-powered suggestions</p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    # Custom CSS
+    st.markdown("""
+    <style>
+        /* Downward-pointing selectbox arrow */
+        div[data-baseweb="select"] > div:first-child {
+            padding-right: 2.5rem !important;
+        }
+        div[data-baseweb="select"] > div:first-child > div:after {
+            content: "▼" !important;
+            position: absolute !important;
+            top: 50% !important;
+            right: 0.5rem !important;
+            transform: translateY(-50%) !important;
+            pointer-events: none !important;
+        }
+        
+        /* Header styling */
+        .header {
+            background: linear-gradient(135deg, #6e48aa 0%, #9d50bb 100%);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            color: white;
+        }
+        
+        /* Fix image rendering */
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+    <div class="header">
+        <h1 style='text-align: center; margin: 0;'>🎬 Nupoor Mhadgut's Movie Recommendation Engine</h1>
+        <p style='text-align: center; margin: 0.5rem 0 0;'>Discover your next favorite film</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Main content
+    # Load data
     movies = load_data()
     if movies is None:
         st.stop()
@@ -353,21 +308,21 @@ def main():
         st.markdown("---")
         st.markdown("Built with ❤️ by [Nupoor Mhadgut]")
     
-    # Selectbox with downward-pointing arrow
+    # Movie selection
     selected = st.selectbox(
         "🎞️ Select a movie you like:",
         movies['title'].sort_values(),
-        index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0,
-        help="Start typing to search through 9,000+ movies"
+        index=movies['title'].tolist().index("Interstellar (2014)") if "Interstellar (2014)" in movies['title'].values else 0,
+        help="Search from 9,000+ movies"
     )
     
     if st.button("🔍 Find Similar Movies", type="primary"):
-        with st.spinner("🧠 Analyzing genres and finding recommendations..."):
+        with st.spinner("Finding recommendations..."):
             idx = movies[movies['title'] == selected].index[0]
             sim_scores = list(enumerate(cosine_sim[idx]))
             sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:num_recs+1]
             
-            st.markdown(f"## 🎯 Similar to: **{movies.iloc[idx]['display_title']}**")
+            st.markdown(f"## 🎯 Similar to: **{movies.iloc[idx]['display_title']} ({movies.iloc[idx]['year']})**")
             cols = st.columns(min(3, len(sim_scores)))
             
             for i, (idx, score) in enumerate(sim_scores):
