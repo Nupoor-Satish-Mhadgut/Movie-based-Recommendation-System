@@ -177,29 +177,78 @@ def get_movie_media(movie):
 
 def movie_card(movie):
     media = get_movie_media(movie)
-
-    # Poster
-    poster_url = media["poster"] or DEFAULT_THUMBNAIL
     
-    # Display poster
-    st.image(poster_url, use_column_width=True, 
-             caption=f"{movie['display_title']} ({movie['year']})")
-    
-    # Display genres
-    st.caption(', '.join(movie['genres'].split()[:3]))
-    
-    # Display trailer button if available
-    if media.get("trailer"):
-        trailer = media["trailer"]
-        platform = trailer["source"].capitalize()
+    # Create a container with card styling
+    with st.container():
+        st.markdown(
+            f"""
+            <style>
+                .movie-card {{
+                    border: 1px solid #e0e0e0;
+                    border-radius: 12px;
+                    padding: 16px;
+                    margin-bottom: 24px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+                    background: white;
+                }}
+                .movie-title {{
+                    font-size: 1.2rem;
+                    font-weight: 600;
+                    color: #333;
+                    margin: 12px 0 4px;
+                    text-align: center;
+                }}
+                .movie-genres {{
+                    color: #666;
+                    font-size: 0.9rem;
+                    margin: 4px 0 12px;
+                    text-align: center;
+                }}
+            </style>
+            <div class="movie-card">
+            """,
+            unsafe_allow_html=True
+        )
         
-        # Create a nice button with emoji
-        if st.button(f"▶ Watch Trailer on {platform}", 
-                    key=f"trailer_{movie['title']}"):
-            # Open the trailer URL in a new tab
-            js = f"window.open('{trailer['url']}')"
-            st.components.v1.html(f"<script>{js}</script>", height=0)
-
+        # Poster image
+        st.image(
+            media["poster"] or DEFAULT_THUMBNAIL,
+            use_container_width=True,
+            on_error=DEFAULT_THUMBNAIL
+        )
+        
+        # Title and year
+        st.markdown(
+            f'<div class="movie-title">{movie["display_title"]} ({movie["year"]})</div>',
+            unsafe_allow_html=True
+        )
+        
+        # Genres
+        st.markdown(
+            f'<div class="movie-genres">{", ".join(movie["genres"].split()[:3])}</div>',
+            unsafe_allow_html=True
+        )
+        
+        # Trailer button
+        if media.get("trailer"):
+            trailer = media["trailer"]
+            platform = trailer["source"].capitalize()
+            
+            # Create columns to center the button
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                if st.button(
+                    f"▶ Watch {platform} Trailer",
+                    key=f"trailer_{movie['title']}",
+                    use_container_width=True
+                ):
+                    # Open the trailer in a new tab
+                    st.markdown(
+                        f'<meta http-equiv="refresh" content="0; url={trailer["url"]}" />',
+                        unsafe_allow_html=True
+                    )
+        
+        st.markdown("</div>", unsafe_allow_html=True)
 
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
