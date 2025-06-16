@@ -30,7 +30,7 @@ OMDB_API_KEY = st.secrets["api_keys"].get("OMDB_API_KEY")
 def prepare_model(movies):
     tfidf = TfidfVectorizer(stop_words='english')
     tfidf_matrix = tfidf.fit_transform(movies['genres'])
-    return linear_kernel(tfidf_matrix, tfidf_matrix)  # Fixed the typo here
+    return linear_kernel(tfidf_matrix, tfidf_matrix)
 
 @st.cache_data
 def load_data():
@@ -59,7 +59,6 @@ def fetch_poster(title, year):
     # 1. Try TMDB first
     if TMDB_API_KEY:
         try:
-            # Search for movie to get ID
             search_url = "https://api.themoviedb.org/3/search/movie"
             search_params = {
                 "api_key": TMDB_API_KEY,
@@ -73,8 +72,6 @@ def fetch_poster(title, year):
             
             if search_data.get('results') and len(search_data['results']) > 0:
                 movie_id = search_data['results'][0]['id']
-                
-                # Get movie details including images
                 movie_url = f"https://api.themoviedb.org/3/movie/{movie_id}"
                 movie_params = {"api_key": TMDB_API_KEY}
                 movie_response = requests.get(movie_url, params=movie_params, timeout=3)
@@ -128,7 +125,6 @@ def fetch_tmdb_trailer(title, year=None):
         return None
         
     try:
-        # Search for movie to get ID
         search_url = "https://api.themoviedb.org/3/search/movie"
         search_params = {
             "api_key": TMDB_API_KEY,
@@ -144,15 +140,12 @@ def fetch_tmdb_trailer(title, year=None):
             return None
             
         movie_id = search_data['results'][0]['id']
-        
-        # Get videos for this movie
         videos_url = f"https://api.themoviedb.org/3/movie/{movie_id}/videos"
         videos_params = {"api_key": TMDB_API_KEY}
         videos_response = requests.get(videos_url, params=videos_params, timeout=5)
         videos_response.raise_for_status()
         videos_data = videos_response.json()
         
-        # Find the first official trailer
         for video in videos_data.get('results', []):
             if video['site'] == 'YouTube' and video['type'] == 'Trailer':
                 return {
@@ -210,12 +203,10 @@ def fetch_itunes_trailer(title, year=None):
         return None
 
 def get_best_trailer(title, year):
-    # Try TMDB first (most reliable)
     tmdb_trailer = fetch_tmdb_trailer(title, year)
     if tmdb_trailer:
         return tmdb_trailer
     
-    # Fallback to YouTube
     youtube_url = fetch_youtube_trailer(title)
     if youtube_url: 
         return {
@@ -224,7 +215,6 @@ def get_best_trailer(title, year):
             'button_color': '#FF0000'
         }
     
-    # Final fallback to iTunes
     itunes_url = fetch_itunes_trailer(title, year)
     if itunes_url:
         return {
@@ -247,38 +237,70 @@ def movie_card(movie):
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    # Create columns for layout
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        # Display poster image
-        st.image(poster_url, use_container_width=True)
-    
-    with col2:
-        # Display movie title and year
-        st.markdown(f"### {movie['display_title']} ({movie['year']})")
+    # Card container with styling
+    with st.container():
+        st.markdown("""
+        <style>
+            .movie-card {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                padding: 16px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+                background: white;
+                margin-bottom: 24px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                height: 100%;
+            }
+            .movie-poster {
+                margin-bottom: 12px;
+            }
+            .movie-title {
+                text-align: center;
+                margin: 8px 0;
+                font-size: 1.1rem;
+                font-weight: 600;
+            }
+            .movie-genres {
+                text-align: center;
+                color: #666;
+                margin: 4px 0 12px 0;
+                font-size: 0.9rem;
+            }
+            .trailer-button {
+                margin-top: 8px;
+            }
+        </style>
+        """, unsafe_allow_html=True)
         
-        # Display genres
+        # Poster image
+        st.markdown(f'<div class="movie-poster"><img src="{poster_url}" width="200"></div>', 
+                   unsafe_allow_html=True)
+        
+        # Movie title and year
+        st.markdown(f'<div class="movie-title">{movie["display_title"]} ({movie["year"]})</div>', 
+                   unsafe_allow_html=True)
+        
+        # Genres
         genres = ', '.join(movie['genres'].split()[:3])
-        st.caption(f"**Genres:** {genres}")
+        st.markdown(f'<div class="movie-genres"><b>Genres:</b> {genres}</div>', 
+                   unsafe_allow_html=True)
         
-        # Display trailer button if available
+        # Trailer button
         if trailer:
-            logo = "▶️"  # Default play button emoji
-            if trailer['source'] == 'youtube':
-                logo = "📺"  # TV emoji for YouTube
-            elif trailer['source'] == 'itunes':
-                logo = "🎵"  # Music note for iTunes
-            
+            logo = "▶️" if trailer['source'] == 'youtube' else "🎵"
             st.markdown(
                 f"""
-                <a href="{trailer['url']}" target="_blank"
-                   style="display:inline-flex;align-items:center;gap:8px;
-                          background:{trailer['button_color']}; color:white;
-                          padding:10px 20px; border-radius:30px; text-decoration:none;
-                          font-weight:bold;">
-                    {logo} Watch Trailer
-                </a>
+                <div class="trailer-button">
+                    <a href="{trailer['url']}" target="_blank"
+                       style="display: inline-block; align-items: center; gap: 8px;
+                              background: {trailer['button_color']}; color: white;
+                              padding: 10px 20px; border-radius: 30px; 
+                              text-decoration: none; font-weight: bold;">
+                        {logo} Watch Trailer
+                    </a>
+                </div>
                 """,
                 unsafe_allow_html=True
             )
@@ -287,13 +309,29 @@ def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
     st.markdown("""
     <style>
-        .header {background:linear-gradient(135deg,#6e48aa 0%,#9d50bb 100%);padding:2rem;border-radius:12px;margin-bottom:2rem;color:white;}
-        .movie-card {transition:transform 0.2s;}
-        .movie-card:hover {transform:scale(1.02);}
+        .header {
+            background: linear-gradient(135deg,#6e48aa 0%,#9d50bb 100%);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            color: white;
+        }
+        .recommendation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        @media (max-width: 768px) {
+            .recommendation-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+        }
     </style>
     <div class="header">
         <h1 style='text-align:center;margin:0;'>🎬 Movie Recommendation Engine</h1>
-    </div>""", unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
     
     movies = load_data()
     if movies is None: 
@@ -318,10 +356,12 @@ def main():
             idx = movies[movies['title'] == selected].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
             st.markdown(f"## 🎯 Similar to: **{movies.iloc[idx]['display_title']}**")
-            cols = st.columns(min(3, len(sim_scores)))
-            for i, (idx, score) in enumerate(sim_scores):
-                with cols[i % len(cols)]: 
-                    movie_card(movies.iloc[idx])
+            
+            # Grid layout for recommendations
+            st.markdown('<div class="recommendation-grid">', unsafe_allow_html=True)
+            for idx, score in sim_scores:
+                movie_card(movies.iloc[idx])
+            st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
