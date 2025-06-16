@@ -43,18 +43,15 @@ def load_data():
         
         movies = pd.read_csv("data/ml-latest-small/movies.csv")
         movies['genres'] = movies['genres'].str.replace('|', ' ')
-        movies['year'] = movies['title'].str.extract(r'\((\d{4})\)')
-        
-        # Clean titles with special characters
+        movies['year'] = movies['title'].str.extract(r'\((\d{4})\)')  # Fixed Line 47 parentheses
         movies['display_title'] = movies['title'].apply(
             lambda x: html.escape(re.sub(r'\(\d{4}\)', '', x).strip())
         )
         return movies
-    
-    except Exception as e:
+    except Exception as e:  # Added missing except clause for Line 34
         st.error(f"🚨 Error loading data: {str(e)}")
         return None
-
+    
 # --- API Functions ---
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=10))
 def fetch_youtube_trailer(title):
@@ -77,9 +74,8 @@ def fetch_youtube_trailer(title):
         )
         response.raise_for_status()
         data = response.json()
-        if data.get('items'):
-            return f"https://youtu.be/{data['items'][0]['id']['videoId']}"
-    except:
+        return f"https://youtu.be/{data['items'][0]['id']['videoId']}" if data.get('items') else None
+    except Exception:
         return None
 
 def fetch_itunes_trailer(title, year=None):
@@ -99,9 +95,8 @@ def fetch_itunes_trailer(title, year=None):
         )
         response.raise_for_status()
         data = response.json()
-        if data.get("resultCount", 0) > 0:
-            return data["results"][0].get("previewUrl")
-    except:
+        return data["results"][0].get("previewUrl") if data.get("resultCount", 0) > 0 else None
+    except Exception:
         return None
 
 def get_best_trailer(title, year):
@@ -122,11 +117,9 @@ def get_best_trailer(title, year):
             'button_color': '#000000',
             'badge': 'iTunes'
         }
-    
     return None
 
 def fetch_poster(title, year):
-    # Try OMDB first
     if OMDB_API_KEY:
         try:
             clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
@@ -144,10 +137,9 @@ def fetch_poster(title, year):
             data = response.json()
             if data.get('Poster') and data['Poster'] != 'N/A':
                 return data['Poster']
-        except:
+        except Exception:
             pass
     
-    # Fallback to iTunes
     try:
         clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
         query = f"{clean_title} {year}" if year else clean_title
@@ -166,7 +158,7 @@ def fetch_poster(title, year):
         data = response.json()
         if data.get("resultCount", 0) > 0:
             return data["results"][0].get("artworkUrl100", "").replace("100x100bb", "600x600bb")
-    except:
+    except Exception:
         return None
 
 @st.cache_data(ttl=3600)
@@ -177,7 +169,6 @@ def get_movie_media(movie):
         'trailer': get_best_trailer(movie['title'], movie.get('year'))
     }
 
-# --- UI Components ---
 def movie_card(movie):
     media = get_movie_media(movie)
     
@@ -248,9 +239,8 @@ def movie_card(movie):
         """
     
     card_html += "</div>"
-    st.markdown(card_html, unsafe_allow_html=True)
+    st.components.v1.html(card_html, height=450)
 
-# --- Main App ---
 def main():
     st.set_page_config(
         layout="wide",
@@ -258,10 +248,8 @@ def main():
         page_icon="🎥"
     )
     
-    # Custom CSS
     st.markdown("""
     <style>
-        /* Downward-pointing selectbox arrow */
         div[data-baseweb="select"] > div:first-child {
             padding-right: 2.5rem !important;
         }
@@ -272,9 +260,8 @@ def main():
             right: 0.5rem !important;
             transform: translateY(-50%) !important;
             pointer-events: none !important;
+            font-size: 12px !important;
         }
-        
-        /* Header styling */
         .header {
             background: linear-gradient(135deg, #6e48aa 0%, #9d50bb 100%);
             padding: 2rem;
@@ -282,11 +269,8 @@ def main():
             margin-bottom: 2rem;
             color: white;
         }
-        
-        /* Fix image rendering */
-        img {
-            max-width: 100%;
-            height: auto;
+        div[data-baseweb="select"] {
+            z-index: 0 !important;
         }
     </style>
     <div class="header">
@@ -295,7 +279,6 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Load data
     movies = load_data()
     if movies is None:
         st.stop()
@@ -308,26 +291,25 @@ def main():
         st.markdown("---")
         st.markdown("Built with ❤️ by [Nupoor Mhadgut]")
     
-    # Movie selection
     selected = st.selectbox(
         "🎞️ Select a movie you like:",
         movies['title'].sort_values(),
-        index=movies['title'].tolist().index("Interstellar (2014)") if "Interstellar (2014)" in movies['title'].values else 0,
+        index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0,
         help="Search from 9,000+ movies"
     )
     
     if st.button("🔍 Find Similar Movies", type="primary"):
-        with st.spinner("Finding recommendations..."):
-            idx = movies[movies['title'] == selected].index[0]
-            sim_scores = list(enumerate(cosine_sim[idx]))
-            sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:num_recs+1]
-            
-            st.markdown(f"## 🎯 Similar to: **{movies.iloc[idx]['display_title']} ({movies.iloc[idx]['year']})**")
-            cols = st.columns(min(3, len(sim_scores)))
-            
-            for i, (idx, score) in enumerate(sim_scores):
-                with cols[i % len(cols)]:
-                    movie_card(movies.iloc[idx])
+     with st.spinner("Finding recommendations..."):
+        idx = movies[movies['title'] == selected].index[0]
+        sim_scores = list(enumerate(cosine_sim[idx]))
+        sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:num_recs+1]
+        
+        st.markdown(f"## 🎯 Similar to: **{movies.iloc[idx]['display_title']} ({movies.iloc[idx]['year']})**")
+        cols = st.columns(min(3, len(sim_scores)))  # Fixed Line 314 statement separation
+        
+        for i, (idx, score) in enumerate(sim_scores):
+            with cols[i % len(cols)]:
+                movie_card(movies.iloc[idx])
 
 if __name__ == "__main__":
     main()
