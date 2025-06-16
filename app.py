@@ -10,11 +10,10 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 import re
 import html
 
-# --- Constants ---
+# Constants and configuration
 DEFAULT_THUMBNAIL = "https://via.placeholder.com/300x450.png?text=No+Poster"
 MOVIELENS_URL = "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"
 
-# --- API Configuration ---
 if 'api_keys' not in st.secrets:
     st.error("❌ API keys missing in Streamlit secrets!")
     st.stop()
@@ -22,13 +21,11 @@ if 'api_keys' not in st.secrets:
 YOUTUBE_API_KEY = st.secrets["api_keys"].get("YOUTUBE_API_KEY")
 OMDB_API_KEY = st.secrets["api_keys"].get("OMDB_API_KEY")
 
-# --- Recommendation System ---
 def prepare_model(movies):
     tfidf = TfidfVectorizer(stop_words='english')
     tfidf_matrix = tfidf.fit_transform(movies['genres'])
     return linear_kernel(tfidf_matrix, tfidf_matrix)
 
-# --- Data Loading ---
 @st.cache_data
 def load_data():
     try:
@@ -52,7 +49,6 @@ def load_data():
         st.error(f"🚨 Error loading data: {str(e)}")
         return None
 
-# --- API Functions ---
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=10))
 def fetch_youtube_trailer(title):
     if not YOUTUBE_API_KEY:
@@ -172,7 +168,6 @@ def get_movie_media(movie):
 def movie_card(movie):
     media = get_movie_media(movie)
     
-    # Create card container
     with st.container():
         st.markdown(
             f"""
@@ -187,7 +182,6 @@ def movie_card(movie):
                 flex-direction: column;
                 height: 100%;
             '>
-                <!-- Movie Poster -->
                 <img src='{media["poster"]}' 
                     style='
                         width: 100%;
@@ -197,7 +191,6 @@ def movie_card(movie):
                         background: #f5f5f5;
                     '>
                 
-                <!-- Movie Title and Year -->
                 <h3 style='
                     text-align: center;
                     margin: 12px 0 4px;
@@ -208,7 +201,6 @@ def movie_card(movie):
                     {movie['display_title']} ({movie['year']})
                 </h3>
                 
-                <!-- Genres -->
                 <div style='
                     text-align: center; 
                     margin: 4px 0 12px; 
@@ -218,7 +210,6 @@ def movie_card(movie):
                     {', '.join(movie['genres'].split()[:3])}
                 </div>
                 
-                <!-- Trailer Button -->
                 <div style='margin-top: auto; text-align: center;'>
                     <a href='{media["trailer"]["url"] if media["trailer"] else "#"}'
                     target='_blank'
@@ -232,7 +223,6 @@ def movie_card(movie):
                         font-weight: 600;
                         font-size: 0.9rem;
                         margin: 0 auto;
-                        cursor: pointer;
                     '>
                         ▶ Watch Trailer {f"({media['trailer']['badge']})" if media['trailer'] else "(Unavailable)"}
                     </a>
@@ -249,10 +239,8 @@ def main():
         page_icon="🎥"
     )
     
-    # Custom CSS with stronger dropdown arrow styling
     st.markdown("""
     <style>
-        /* Force permanent downward arrow */
         div[data-baseweb="select"] > div:first-child > div:after {
             content: "▼" !important;
             position: absolute !important;
@@ -262,13 +250,6 @@ def main():
             pointer-events: none !important;
             font-size: 12px !important;
         }
-        
-        /* Prevent arrow flip when open */
-        div[data-baseweb="select"] > div:first-child > div[aria-expanded="true"]:after {
-            transform: translateY(-50%) rotate(0deg) !important;
-        }
-        
-        /* Header styling */
         .header {
             background: linear-gradient(135deg, #6e48aa 0%, #9d50bb 100%);
             padding: 2rem;
@@ -283,7 +264,6 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Load data
     movies = load_data()
     if movies is None:
         st.stop()
@@ -296,7 +276,6 @@ def main():
         st.markdown("---")
         st.markdown("Built with ❤️ by Nupoor Mhadgut")
     
-    # Movie selection with permanent downward arrow
     selected = st.selectbox(
         "🎞️ Select a movie you like:",
         movies['title'].sort_values(),
