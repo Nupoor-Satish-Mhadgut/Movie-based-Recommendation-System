@@ -178,6 +178,11 @@ def get_movie_media(movie):
 def movie_card(movie):
     media = get_movie_media(movie)
     
+    # Ensure we have a valid poster URL
+    poster_url = media.get("poster", DEFAULT_THUMBNAIL)
+    if not poster_url or not isinstance(poster_url, str):
+        poster_url = DEFAULT_THUMBNAIL
+    
     # Create a container with card styling
     with st.container():
         st.markdown(
@@ -210,22 +215,29 @@ def movie_card(movie):
             unsafe_allow_html=True
         )
         
-        # Poster image
-        st.image(
-            media["poster"] or DEFAULT_THUMBNAIL,
-            use_container_width=True,
-            on_error=DEFAULT_THUMBNAIL
-        )
+        try:
+            # Poster image with proper error handling
+            st.image(
+                poster_url,
+                use_container_width=True,
+                output_format="auto"
+            )
+        except:
+            st.image(
+                DEFAULT_THUMBNAIL,
+                use_container_width=True,
+                output_format="auto"
+            )
         
         # Title and year
         st.markdown(
-            f'<div class="movie-title">{movie["display_title"]} ({movie["year"]})</div>',
+            f'<div class="movie-title">{html.escape(movie["display_title"])} ({movie["year"]})</div>',
             unsafe_allow_html=True
         )
         
         # Genres
         st.markdown(
-            f'<div class="movie-genres">{", ".join(movie["genres"].split()[:3])}</div>',
+            f'<div class="movie-genres">{html.escape(", ".join(movie["genres"].split()[:3]))}</div>',
             unsafe_allow_html=True
         )
         
@@ -243,6 +255,10 @@ def movie_card(movie):
                     use_container_width=True
                 ):
                     # Open the trailer in a new tab
+                    st.markdown(
+                        f'<a href="{trailer["url"]}" target="_blank">Click here if not redirected</a>',
+                        unsafe_allow_html=True
+                    )
                     st.markdown(
                         f'<meta http-equiv="refresh" content="0; url={trailer["url"]}" />',
                         unsafe_allow_html=True
