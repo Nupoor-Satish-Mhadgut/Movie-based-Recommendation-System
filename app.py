@@ -177,94 +177,45 @@ def get_movie_media(movie):
 
 def movie_card(movie):
     media = get_movie_media(movie)
-    
-    # Ensure we have a valid poster URL
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
-    if not poster_url or not isinstance(poster_url, str):
-        poster_url = DEFAULT_THUMBNAIL
-    
-    # Create a container with card styling
-    with st.container():
-        st.markdown(
-            f"""
-            <style>
-                .movie-card {{
-                    border: 1px solid #e0e0e0;
-                    border-radius: 12px;
-                    padding: 16px;
-                    margin-bottom: 24px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-                    background: white;
-                }}
-                .movie-title {{
-                    font-size: 1.2rem;
-                    font-weight: 600;
-                    color: #333;
-                    margin: 12px 0 4px;
-                    text-align: center;
-                }}
-                .movie-genres {{
-                    color: #666;
-                    font-size: 0.9rem;
-                    margin: 4px 0 12px;
-                    text-align: center;
-                }}
-            </style>
-            <div class="movie-card">
-            """,
-            unsafe_allow_html=True
+    trailer = media.get("trailer")
+
+    # Start building the HTML
+    html_content = f"""
+    <div style="border:1px solid #e0e0e0; border-radius:12px; padding:16px; 
+                box-shadow:0 4px 12px rgba(0,0,0,0.08); background:white; margin-bottom:24px;">
+        <img src="{poster_url}" style="width:100%; border-radius:8px; aspect-ratio:2/3; object-fit:cover; background:#f5f5f5;" 
+             onerror="this.onerror=null;this.src='{DEFAULT_THUMBNAIL}';" />
+        <h3 style="text-align:center; margin:12px 0 4px; font-size:1.2rem; font-weight:600; color:#333;">
+            {html.escape(movie['display_title'])} ({movie['year']})
+        </h3>
+        <div style="text-align:center; color:#666; font-size:0.9rem; margin-bottom:12px;">
+            {html.escape(', '.join(movie['genres'].split()[:3]))}
+        </div>
+    """
+
+    if trailer:
+        logo = (
+            "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"
+            if trailer['source'] == 'youtube'
+            else "https://upload.wikimedia.org/wikipedia/commons/d/df/ITunes_logo.svg"
         )
-        
-        try:
-            # Poster image with proper error handling
-            st.image(
-                poster_url,
-                use_container_width=True,
-                output_format="auto"
-            )
-        except:
-            st.image(
-                DEFAULT_THUMBNAIL,
-                use_container_width=True,
-                output_format="auto"
-            )
-        
-        # Title and year
-        st.markdown(
-            f'<div class="movie-title">{html.escape(movie["display_title"])} ({movie["year"]})</div>',
-            unsafe_allow_html=True
-        )
-        
-        # Genres
-        st.markdown(
-            f'<div class="movie-genres">{html.escape(", ".join(movie["genres"].split()[:3]))}</div>',
-            unsafe_allow_html=True
-        )
-        
-        # Trailer button
-        if media.get("trailer"):
-            trailer = media["trailer"]
-            platform = trailer["source"].capitalize()
-            
-            # Create columns to center the button
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                if st.button(
-                    f"▶ Watch {platform} Trailer",
-                    key=f"trailer_{movie['title']}",
-                    use_container_width=True
-                ):
-                    # Open the trailer in a new tab
-                    st.markdown(
-                        f'<a href="{trailer["url"]}" target="_blank">Click here if not redirected</a>',
-                        unsafe_allow_html=True
-                    )
-                    st.markdown(
-                        f'<meta http-equiv="refresh" content="0; url={trailer["url"]}" />',
-                        unsafe_allow_html=True
-                    )
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+        html_content += f"""
+        <div style="text-align:center;">
+            <a href="{trailer['url']}" target="_blank"
+               style="display:inline-flex;align-items:center;gap:8px;
+                      background:{trailer['button_color']}; color:white;
+                      padding:10px 20px; border-radius:30px; text-decoration:none;
+                      font-weight:bold;">
+                ▶ Watch Trailer <img src="{logo}" style="width:20px;height:20px;" />
+            </a>
+        </div>
+        """
+
+    html_content += "</div>"
+
+    st.markdown(html_content, unsafe_allow_html=True)
+
 
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
