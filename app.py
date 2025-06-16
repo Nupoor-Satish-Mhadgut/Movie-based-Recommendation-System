@@ -172,74 +172,75 @@ def get_movie_media(movie):
 def movie_card(movie):
     media = get_movie_media(movie)
     
-    card_html = f"""
-    <div style='
-        border-radius: 12px;
-        border: 1px solid #e0e0e0;
-        padding: 16px;
-        margin-bottom: 24px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        transition: transform 0.3s, box-shadow 0.3s;
-        height: 100%;
-        background: white;
-        display: flex;
-        flex-direction: column;
-    '>
-        <img src='{media["poster"]}' 
-             style='
-                 width: 100%;
-                 height: auto;
-                 border-radius: 8px;
-                 aspect-ratio: 2/3;
-                 object-fit: contain;
-                 background: #f5f5f5;
-             '>
-        
-        <h3 style='
-            text-align: center;
-            margin: 12px 0 4px;
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #333;
-        '>
-            {movie['display_title']} ({movie['year']})
-        </h3>
-        
-        <div style='
-            text-align: center; 
-            margin: 4px 0 12px; 
-            color: #666; 
-            font-size: 0.9rem;
-            min-height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        '>
-            {', '.join(movie['genres'].split()[:3])}
-        </div>
-    """
-    
-    if media['trailer']:
-        card_html += f"""
-        <div style='text-align: center; margin-top: auto;'>
-            <a href='{media["trailer"]["url"]}' target='_blank' 
-            style='
-                display: inline-block;
-                background: {media["trailer"]["button_color"]};
-                color: white;
-                padding: 8px 16px;
-                border-radius: 50px;
-                text-decoration: none;
-                font-weight: 600;
-                font-size: 0.9rem;
+    # Create card container
+    with st.container():
+        st.markdown(
+            f"""
+            <div style='
+                border-radius: 12px;
+                border: 1px solid #e0e0e0;
+                padding: 16px;
+                margin-bottom: 24px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+                background: white;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
             '>
-                ▶ Watch Trailer ({media["trailer"]["badge"]})
-            </a>
-        </div>
-        """
-    
-    card_html += "</div>"
-    st.components.v1.html(card_html, height=450)
+                <!-- Movie Poster -->
+                <img src='{media["poster"]}' 
+                    style='
+                        width: 100%;
+                        border-radius: 8px;
+                        aspect-ratio: 2/3;
+                        object-fit: contain;
+                        background: #f5f5f5;
+                    '>
+                
+                <!-- Movie Title and Year -->
+                <h3 style='
+                    text-align: center;
+                    margin: 12px 0 4px;
+                    font-size: 1.2rem;
+                    font-weight: 600;
+                    color: #333;
+                '>
+                    {movie['display_title']} ({movie['year']})
+                </h3>
+                
+                <!-- Genres -->
+                <div style='
+                    text-align: center; 
+                    margin: 4px 0 12px; 
+                    color: #666; 
+                    font-size: 0.9rem;
+                '>
+                    {', '.join(movie['genres'].split()[:3])}
+                </div>
+                
+                <!-- Trailer Button -->
+                <div style='margin-top: auto; text-align: center;'>
+                    <a href='{media["trailer"]["url"] if media["trailer"] else "#"}'
+                    target='_blank'
+                    style='
+                        display: inline-block;
+                        background: {media["trailer"]["button_color"] if media["trailer"] else "#ccc"};
+                        color: white;
+                        padding: 8px 16px;
+                        border-radius: 50px;
+                        text-decoration: none;
+                        font-weight: 600;
+                        font-size: 0.9rem;
+                        margin: 0 auto;
+                        cursor: pointer;
+                    '>
+                        ▶ Watch Trailer {f"({media['trailer']['badge']})" if media['trailer'] else "(Unavailable)"}
+                    </a>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 def main():
     st.set_page_config(
