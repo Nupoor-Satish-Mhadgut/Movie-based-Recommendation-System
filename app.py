@@ -180,54 +180,25 @@ def movie_card(movie):
 
     # Poster
     poster_url = media["poster"] or DEFAULT_THUMBNAIL
-    poster_html = f"""
-        <img src="{poster_url}" style="width:100%;border-radius:8px;
-        aspect-ratio:2/3;object-fit:cover;background:#f5f5f5;"
-        onerror="this.onerror=null;this.src='{DEFAULT_THUMBNAIL}';">
-    """
-
-    # Trailer Button
-    trailer_html = ""
+    
+    # Display poster
+    st.image(poster_url, use_column_width=True, 
+             caption=f"{movie['display_title']} ({movie['year']})")
+    
+    # Display genres
+    st.caption(', '.join(movie['genres'].split()[:3]))
+    
+    # Display trailer button if available
     if media.get("trailer"):
         trailer = media["trailer"]
-        button_color = trailer["button_color"]
-        platform = trailer["source"]
-        logo = (
-            "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"
-            if platform == "youtube"
-            else "https://upload.wikimedia.org/wikipedia/commons/d/df/ITunes_logo.svg"
-        )
-        trailer_html = f"""
-            <div style='text-align:center;margin-top:12px;'>
-                <a href="{trailer['url']}" target="_blank"
-                   style="display:inline-flex;align-items:center;gap:8px;
-                          padding:10px 20px;border-radius:30px;
-                          background:{button_color};color:white;
-                          text-decoration:none;font-weight:bold;">
-                    ▶ Watch Trailer
-                    <img src="{logo}" style="width:20px;height:20px;">
-                </a>
-            </div>
-        """
-
-    # Combine full HTML card
-    full_html = f"""
-        <div style="border-radius:12px;border:1px solid #e0e0e0;padding:16px;
-                    box-shadow:0 4px 12px rgba(0,0,0,0.08);background:white;
-                    display:flex;flex-direction:column;height:100%;margin-bottom:24px;">
-            {poster_html}
-            <h3 style="text-align:center;margin:12px 0 4px;font-size:1.2rem;
-                       font-weight:600;color:#333;">{movie['display_title']} ({movie['year']})</h3>
-            <div style="text-align:center;margin:4px 0 12px;color:#666;font-size:0.9rem;">
-                {', '.join(movie['genres'].split()[:3])}
-            </div>
-            {trailer_html}
-        </div>
-    """
-
-    st.markdown(full_html, unsafe_allow_html=True)
-
-
+        platform = trailer["source"].capitalize()
+        
+        # Create a nice button with emoji
+        if st.button(f"▶ Watch Trailer on {platform}", 
+                    key=f"trailer_{movie['title']}"):
+            # Open the trailer URL in a new tab
+            js = f"window.open('{trailer['url']}')"
+            st.components.v1.html(f"<script>{js}</script>", height=0)
 
 
 def main():
