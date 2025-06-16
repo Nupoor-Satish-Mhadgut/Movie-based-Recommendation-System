@@ -252,7 +252,7 @@ def movie_card(movie):
     
     with col1:
         # Display poster image
-        st.image(poster_url, use_column_width=True)
+        st.image(poster_url, use_container_width=True)
     
     with col2:
         # Display movie title and year
