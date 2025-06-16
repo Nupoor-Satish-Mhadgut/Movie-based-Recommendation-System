@@ -214,7 +214,16 @@ def movie_card(movie):
 
     html_content += "</div>"
 
-    st.markdown(html_content, unsafe_allow_html=True)
+    st.markdown("""
+<a href="https://youtu.be/dQw4w9WgXcQ" target="_blank"
+   style="display:inline-block;background:#FF0000;color:white;padding:10px 20px;
+          border-radius:30px;text-decoration:none;font-weight:bold;">
+    ▶ Watch Trailer
+    <img src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"
+         style="width:20px;height:20px;margin-left:8px;">
+</a>
+""", unsafe_allow_html=True)
+
 
 
 def main():
