@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import requests
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -239,61 +240,63 @@ def movie_card(movie):
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    st.markdown(f"""
-    <div style="
-        border-radius: 8px;
-        overflow: hidden;
-        background: white;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        transition: transform 0.2s;
-        height: 100%;
-    ">
-        <!-- Poster Image (300px height) -->
-        <img src="{poster_url}" 
-             style="
-                width: 100%;
-                height: 300px;
-                object-fit: cover;
-             "
-             onerror="this.src='{DEFAULT_THUMBNAIL}'"
-        >
-        
-        <!-- Movie Details -->
-        <div style="padding: 12px;">
-            <div style="
-                font-size: 1.1rem;
-                font-weight: 600;
-                margin-bottom: 6px;
-            ">
-                {movie['display_title']} ({movie['year']})
-            </div>
+    # Use columns to separate HTML rendering from display
+    col1, col2 = st.columns([1])
+    with col1:
+        # This will properly render the HTML without showing the code
+        components.html(f"""
+        <div style="
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            height: 100%;
+        ">
+            <img src="{poster_url}" 
+                 style="
+                    width: 100%;
+                    height: 300px;
+                    object-fit: cover;
+                 "
+                 onerror="this.src='{DEFAULT_THUMBNAIL}'"
+            >
             
-            <div style="
-                color: #666;
-                font-size: 0.9rem;
-                margin-bottom: 12px;
-            ">
-                {', '.join(movie['genres'].split()[:3])}
+            <div style="padding: 12px;">
+                <div style="
+                    font-size: 1.1rem;
+                    font-weight: 600;
+                    margin-bottom: 6px;
+                ">
+                    {movie['display_title']} ({movie['year']})
+                </div>
+                
+                <div style="
+                    color: #666;
+                    font-size: 0.9rem;
+                    margin-bottom: 12px;
+                ">
+                    {', '.join(movie['genres'].split()[:3])}
+                </div>
+                
+                {f'''
+                <a href="{trailer['url']}" target="_blank"
+                   style="
+                        display: block;
+                        background: {trailer['button_color']};
+                        color: white;
+                        padding: 8px;
+                        border-radius: 4px;
+                        text-align: center;
+                        text-decoration: none;
+                        font-weight: bold;
+                   ">
+                    ▶ Watch Trailer
+                </a>
+                ''' if trailer else ''}
             </div>
-            
-            {f'''
-            <a href="{trailer['url']}" target="_blank"
-               style="
-                    display: block;
-                    background: {trailer['button_color']};
-                    color: white;
-                    padding: 8px;
-                    border-radius: 4px;
-                    text-align: center;
-                    text-decoration: none;
-                    font-weight: bold;
-               ">
-                ▶ Watch Trailer
-            </a>
-            ''' if trailer else ''}
         </div>
-    </div>
-    """, unsafe_allow_html=True)
+        """, height=400)
 
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
