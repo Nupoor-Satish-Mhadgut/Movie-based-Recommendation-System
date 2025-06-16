@@ -12,12 +12,13 @@ import html
 import logging
 
 # Configure logging
-logging.basicConfig(filename='poster_errors.log', level=logging.INFO)
+logging.basicConfig(filename='movie_errors.log', level=logging.INFO)
 
 # Constants
 DEFAULT_THUMBNAIL = "https://via.placeholder.com/300x450.png?text=No+Poster"
 MOVIELENS_URL = "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"
 
+# Check for API keys
 if 'api_keys' not in st.secrets:
     st.error("❌ API keys missing in Streamlit secrets!")
     st.stop()
@@ -55,10 +56,10 @@ def load_data():
 def fetch_poster(title, year):
     clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
     
-    # 1. First try with TMDB
+    # 1. Try TMDB first
     if TMDB_API_KEY:
         try:
-            # Search for the movie to get its ID
+            # Search for movie to get ID
             search_url = "https://api.themoviedb.org/3/search/movie"
             search_params = {
                 "api_key": TMDB_API_KEY,
@@ -73,21 +74,17 @@ def fetch_poster(title, year):
             if search_data.get('results') and len(search_data['results']) > 0:
                 movie_id = search_data['results'][0]['id']
                 
-                # Fetch movie details including images
+                # Get movie details including images
                 movie_url = f"https://api.themoviedb.org/3/movie/{movie_id}"
-                movie_params = {
-                    "api_key": TMDB_API_KEY,
-                    "append_to_response": "images"
-                }
+                movie_params = {"api_key": TMDB_API_KEY}
                 movie_response = requests.get(movie_url, params=movie_params, timeout=3)
                 movie_response.raise_for_status()
                 movie_data = movie_response.json()
                 
-                # Get the poster path if available
                 if movie_data.get('poster_path'):
                     return f"https://image.tmdb.org/t/p/w500{movie_data['poster_path']}"
         except Exception as e:
-            logging.info(f"TMDB failed for {title}: {str(e)}")
+            logging.info(f"TMDB poster failed for {title}: {str(e)}")
     
     # 2. Fallback to OMDB
     if OMDB_API_KEY:
@@ -103,7 +100,7 @@ def fetch_poster(title, year):
         except Exception as e:
             logging.info(f"OMDB failed for {title}: {str(e)}")
 
-    # 3. Try iTunes with year
+    # 3. Fallback to iTunes
     try:
         response = requests.get(
             "https://itunes.apple.com/search",
@@ -122,26 +119,56 @@ def fetch_poster(title, year):
     except Exception as e:
         logging.info(f"iTunes failed for {title}: {str(e)}")
 
-    # 4. Try Wikipedia
-    try:
-        wiki_url = f"https://en.wikipedia.org/w/api.php?action=query&titles={clean_title}&prop=pageimages&format=json&pithumbsize=500"
-        response = requests.get(wiki_url, timeout=3)
-        data = response.json()
-        pages = data.get('query', {}).get('pages', {})
-        if pages:
-            page = next(iter(pages.values()))
-            if 'thumbnail' in page:
-                return page['thumbnail']['source']
-    except Exception as e:
-        logging.info(f"Wikipedia failed for {title}: {str(e)}")
-
-    # 5. Final fallback - dynamic placeholder with title
+    # 4. Final fallback - placeholder with title
     title_text = f"{clean_title}+{year}" if year else clean_title
     return f"https://via.placeholder.com/300x450/6e48aa/ffffff.png?text={title_text.replace(' ', '+')}"
 
+def fetch_tmdb_trailer(title, year=None):
+    if not TMDB_API_KEY:
+        return None
+        
+    try:
+        # Search for movie to get ID
+        search_url = "https://api.themoviedb.org/3/search/movie"
+        search_params = {
+            "api_key": TMDB_API_KEY,
+            "query": title,
+            "year": year,
+            "language": "en-US"
+        }
+        search_response = requests.get(search_url, params=search_params, timeout=5)
+        search_response.raise_for_status()
+        search_data = search_response.json()
+        
+        if not search_data.get('results'):
+            return None
+            
+        movie_id = search_data['results'][0]['id']
+        
+        # Get videos for this movie
+        videos_url = f"https://api.themoviedb.org/3/movie/{movie_id}/videos"
+        videos_params = {"api_key": TMDB_API_KEY}
+        videos_response = requests.get(videos_url, params=videos_params, timeout=5)
+        videos_response.raise_for_status()
+        videos_data = videos_response.json()
+        
+        # Find the first official trailer
+        for video in videos_data.get('results', []):
+            if video['site'] == 'YouTube' and video['type'] == 'Trailer':
+                return {
+                    'url': f"https://youtu.be/{video['key']}",
+                    'source': 'youtube',
+                    'button_color': '#FF0000'
+                }
+                
+    except Exception as e:
+        logging.info(f"TMDB trailer failed for {title}: {str(e)}")
+    return None
+
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=10))
 def fetch_youtube_trailer(title):
-    if not YOUTUBE_API_KEY: return None
+    if not YOUTUBE_API_KEY: 
+        return None
     try:
         clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
         response = requests.get(
@@ -183,7 +210,12 @@ def fetch_itunes_trailer(title, year=None):
         return None
 
 def get_best_trailer(title, year):
-    # Try YouTube first
+    # Try TMDB first (most reliable)
+    tmdb_trailer = fetch_tmdb_trailer(title, year)
+    if tmdb_trailer:
+        return tmdb_trailer
+    
+    # Fallback to YouTube
     youtube_url = fetch_youtube_trailer(title)
     if youtube_url: 
         return {
@@ -192,7 +224,7 @@ def get_best_trailer(title, year):
             'button_color': '#FF0000'
         }
     
-    # Fallback to iTunes if YouTube fails
+    # Final fallback to iTunes
     itunes_url = fetch_itunes_trailer(title, year)
     if itunes_url:
         return {
@@ -215,7 +247,7 @@ def movie_card(movie):
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    # Start building the HTML
+    # Build HTML content
     html_content = f"""
     <div style="border:1px solid #e0e0e0; border-radius:12px; padding:16px; 
                 box-shadow:0 4px 12px rgba(0,0,0,0.08); background:white; margin-bottom:24px;">
@@ -229,12 +261,9 @@ def movie_card(movie):
         </div>
     """
 
+    # Add trailer button if available
     if trailer:
-        logo = (
-            "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"
-            if trailer['source'] == 'youtube'
-            else "https://upload.wikimedia.org/wikipedia/commons/d/df/ITunes_logo.svg"
-        )
+        logo = "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg" if trailer['source'] == 'youtube' else "https://upload.wikimedia.org/wikipedia/commons/d/df/ITunes_logo.svg"
         html_content += f"""
         <div style="text-align:center;">
             <a href="{trailer['url']}" target="_blank"
@@ -255,18 +284,24 @@ def main():
     st.markdown("""
     <style>
         .header {background:linear-gradient(135deg,#6e48aa 0%,#9d50bb 100%);padding:2rem;border-radius:12px;margin-bottom:2rem;color:white;}
+        .movie-card {transition:transform 0.2s;}
+        .movie-card:hover {transform:scale(1.02);}
     </style>
     <div class="header">
         <h1 style='text-align:center;margin:0;'>🎬 Movie Recommendation Engine</h1>
     </div>""", unsafe_allow_html=True)
     
     movies = load_data()
-    if movies is None: st.stop()
+    if movies is None: 
+        st.stop()
+    
     cosine_sim = prepare_model(movies)
     
     with st.sidebar:
         st.markdown("### 🎛️ Controls")
         num_recs = st.slider("Number of recommendations", 3, 10, 5)
+        st.markdown("---")
+        st.markdown("ℹ️ Select a movie you like and click 'Find Similar Movies'")
     
     selected = st.selectbox(
         "🎞️ Select a movie you like:",
@@ -274,7 +309,7 @@ def main():
         index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0
     )
     
-    if st.button("🔍 Find Similar Movies", type="primary"):
+    if st.button("🔍 Find Similar Movies", type="primary", use_container_width=True):
         with st.spinner("Finding recommendations..."):
             idx = movies[movies['title'] == selected].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
