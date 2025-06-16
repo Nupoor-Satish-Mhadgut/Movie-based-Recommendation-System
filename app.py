@@ -247,45 +247,41 @@ def movie_card(movie):
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    # Build HTML content
-    html_content = f"""
-    <div style="border:1px solid #e0e0e0; border-radius:12px; padding:16px; 
-                box-shadow:0 4px 12px rgba(0,0,0,0.08); background:white; margin-bottom:24px;">
-        <img src="{poster_url}" style="width:100%; border-radius:8px; aspect-ratio:2/3; object-fit:cover; background:#f5f5f5;" 
-             onerror="this.onerror=null;this.src='{DEFAULT_THUMBNAIL}';" />
-        <h3 style="text-align:center; margin:12px 0 4px; font-size:1.2rem; font-weight:600; color:#333;">
-            {html.escape(movie['display_title'])} ({movie['year']})
-        </h3>
-        <div style="text-align:center; color:#666; font-size:0.9rem; margin-bottom:12px;">
-            {html.escape(', '.join(movie['genres'].split()[:3]))}
-        </div>
-    """
-
-    # Add trailer button if available
-    if trailer:
-        # Use emoji instead of logo images to avoid issues
-        logo = "▶️"  # Default play button emoji
-        if trailer['source'] == 'youtube':
-            logo = "📺"  # TV emoji for YouTube
-        elif trailer['source'] == 'itunes':
-            logo = "🎵"  # Music note for iTunes
-        
-        html_content += f"""
-        <div style="text-align:center;">
-            <a href="{trailer['url']}" target="_blank"
-               style="display:inline-flex;align-items:center;gap:8px;
-                      background:{trailer['button_color']}; color:white;
-                      padding:10px 20px; border-radius:30px; text-decoration:none;
-                      font-weight:bold;">
-                {logo} Watch Trailer
-            </a>
-        </div>
-        """
-
-    html_content += "</div>"
+    # Create columns for layout
+    col1, col2 = st.columns([1, 2])
     
-    # Use st.components.v1.html for more reliable HTML rendering
-    st.components.v1.html(html_content, height=400)
+    with col1:
+        # Display poster image
+        st.image(poster_url, use_column_width=True)
+    
+    with col2:
+        # Display movie title and year
+        st.markdown(f"### {movie['display_title']} ({movie['year']})")
+        
+        # Display genres
+        genres = ', '.join(movie['genres'].split()[:3])
+        st.caption(f"**Genres:** {genres}")
+        
+        # Display trailer button if available
+        if trailer:
+            logo = "▶️"  # Default play button emoji
+            if trailer['source'] == 'youtube':
+                logo = "📺"  # TV emoji for YouTube
+            elif trailer['source'] == 'itunes':
+                logo = "🎵"  # Music note for iTunes
+            
+            st.markdown(
+                f"""
+                <a href="{trailer['url']}" target="_blank"
+                   style="display:inline-flex;align-items:center;gap:8px;
+                          background:{trailer['button_color']}; color:white;
+                          padding:10px 20px; border-radius:30px; text-decoration:none;
+                          font-weight:bold;">
+                    {logo} Watch Trailer
+                </a>
+                """,
+                unsafe_allow_html=True
+            )
 
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
