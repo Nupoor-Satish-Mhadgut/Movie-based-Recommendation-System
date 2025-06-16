@@ -232,39 +232,34 @@ def get_movie_media(movie):
         'trailer': get_best_trailer(movie['title'], movie.get('year'))
     }
 
+
+
 def movie_card(movie):
     media = get_movie_media(movie)
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    # Card container with minimal padding
     st.markdown(f"""
     <div style="
         border-radius: 8px;
         overflow: hidden;
-        margin-bottom: 20px;
+        background: white;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
         height: 100%;
     ">
-        <!-- Larger poster image -->
+        <!-- Poster Image (300px height) -->
         <img src="{poster_url}" 
              style="
                 width: 100%;
                 height: 300px;
                 object-fit: cover;
-                border-radius: 8px 8px 0 0;
              "
              onerror="this.src='{DEFAULT_THUMBNAIL}'"
         >
         
-        <!-- Movie details container -->
-        <div style="
-            padding: 12px;
-            background: white;
-            border-radius: 0 0 8px 8px;
-            border: 1px solid #e0e0e0;
-            border-top: none;
-        ">
-            <!-- Title and year -->
+        <!-- Movie Details -->
+        <div style="padding: 12px;">
             <div style="
                 font-size: 1.1rem;
                 font-weight: 600;
@@ -273,7 +268,6 @@ def movie_card(movie):
                 {movie['display_title']} ({movie['year']})
             </div>
             
-            <!-- Genres -->
             <div style="
                 color: #666;
                 font-size: 0.9rem;
@@ -282,7 +276,6 @@ def movie_card(movie):
                 {', '.join(movie['genres'].split()[:3])}
             </div>
             
-            <!-- Trailer button -->
             {f'''
             <a href="{trailer['url']}" target="_blank"
                style="
@@ -294,7 +287,6 @@ def movie_card(movie):
                     text-align: center;
                     text-decoration: none;
                     font-weight: bold;
-                    font-size: 0.9rem;
                ">
                 ▶ Watch Trailer
             </a>
@@ -306,74 +298,7 @@ def movie_card(movie):
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
     
-    # Compact header with no extra space
-    st.markdown("""
-    <style>
-        .header {
-            background: linear-gradient(135deg,#6e48aa 0%,#9d50bb 100%);
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            color: white;
-        }
-        .recommendations-title {
-            margin: 0.5rem 0 !important;
-            padding: 0 !important;
-        }
-        .recommendation-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 16px;
-            margin: 0;
-        }
-        @media (max-width: 768px) {
-            .recommendation-grid {
-                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            }
-        }
-    </style>
-    <div class="header">
-        <h1 style='text-align:center;margin:0;font-size:1.5rem;'>🎬 Movie Recommendation Engine</h1>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    movies = load_data()
-    if movies is None: 
-        st.stop()
-    
-    cosine_sim = prepare_model(movies)
-    
-    with st.sidebar:
-        st.markdown("### 🎛️ Controls")
-        num_recs = st.slider("Number of recommendations", 3, 10, 5)
-    
-    selected = st.selectbox(
-        "🎞️ Select a movie you like:",
-        movies['title'].sort_values(),
-        index=movies['title'].tolist().index("Jumanji (1995)") if "Jumanji (1995)" in movies['title'].values else 0
-    )
-    
-    if st.button("🔍 Find Similar Movies", type="primary"):
-        with st.spinner("Finding recommendations..."):
-            idx = movies[movies['title'] == selected].index[0]
-            sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
-            
-            # Compact title with no extra space
-            st.markdown(
-                f"<h2 class='recommendations-title'>Similar to: {movies.iloc[idx]['display_title']}</h2>",
-                unsafe_allow_html=True
-            )
-            
-            # Tight grid layout
-            st.markdown('<div class="recommendation-grid">', unsafe_allow_html=True)
-            for idx, score in sim_scores:
-                movie_card(movies.iloc[idx])
-            st.markdown('</div>', unsafe_allow_html=True)
-
-def main():
-    st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
-    
-    # Compact header
+    # Header and grid styling
     st.markdown("""
     <style>
         .header {
@@ -385,70 +310,9 @@ def main():
         }
         .recommendation-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 25px;
-            margin-top: 1rem;
-        }
-        @media (max-width: 768px) {
-            .recommendation-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-    <div class="header">
-        <h1 style='text-align:center;margin:0;'>🎬 Movie Recommendation Engine</h1>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    movies = load_data()
-    if movies is None: 
-        st.stop()
-    
-    cosine_sim = prepare_model(movies)
-    
-    with st.sidebar:
-        st.markdown("### 🎛️ Controls")
-        num_recs = st.slider("Number of recommendations", 3, 10, 5)
-    
-    selected = st.selectbox(
-        "🎞️ Select a movie you like:",
-        movies['title'].sort_values(),
-        index=movies['title'].tolist().index("Jumanji (1995)") if "Jumanji (1995)" in movies['title'].values else 0
-    )
-    
-    if st.button("🔍 Find Similar Movies", type="primary"):
-        with st.spinner("Finding recommendations..."):
-            idx = movies[movies['title'] == selected].index[0]
-            sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
-            
-            # Compact heading
-            st.markdown(
-                f"<h2 style='margin:0 0 1rem 0;'>Similar to: <strong>{movies.iloc[idx]['display_title']}</strong></h2>",
-                unsafe_allow_html=True
-            )
-            
-            # Grid layout for recommendations
-            st.markdown('<div class="recommendation-grid">', unsafe_allow_html=True)
-            for idx, score in sim_scores:
-                movie_card(movies.iloc[idx])
-            st.markdown('</div>', unsafe_allow_html=True)
-
-def main():
-    st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
-    st.markdown("""
-    <style>
-        .header {
-            background: linear-gradient(135deg,#6e48aa 0%,#9d50bb 100%);
-            padding: 2rem;
-            border-radius: 12px;
-            margin-bottom: 2rem;
-            color: white;
-        }
-        .recommendation-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 20px;
-            margin-top: 20px;
+            margin-top: 1rem;
         }
         @media (max-width: 768px) {
             .recommendation-grid {
@@ -471,7 +335,7 @@ def main():
         st.markdown("### 🎛️ Controls")
         num_recs = st.slider("Number of recommendations", 3, 10, 5)
         st.markdown("---")
-        st.markdown("ℹ️ Select a movie you like and click 'Find Similar Movies'")
+        st.markdown("ℹ️ Select a movie and click below")
     
     selected = st.selectbox(
         "🎞️ Select a movie you like:",
@@ -483,7 +347,8 @@ def main():
         with st.spinner("Finding recommendations..."):
             idx = movies[movies['title'] == selected].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
-            st.markdown(f"## 🎯 Similar to: **{movies.iloc[idx]['display_title']}**")
+            
+            st.markdown(f"## Similar to: **{movies.iloc[idx]['display_title']}**")
             
             # Grid layout for recommendations
             st.markdown('<div class="recommendation-grid">', unsafe_allow_html=True)
