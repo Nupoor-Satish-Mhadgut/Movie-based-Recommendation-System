@@ -283,7 +283,9 @@ def movie_card(movie):
         """
 
     html_content += "</div>"
-    st.markdown(html_content, unsafe_allow_html=True)
+    
+    # Use st.components.v1.html for more reliable HTML rendering
+    st.components.v1.html(html_content, height=400)
 
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
