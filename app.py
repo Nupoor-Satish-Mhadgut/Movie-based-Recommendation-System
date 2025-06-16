@@ -177,39 +177,47 @@ def get_movie_media(movie):
 
 def movie_card(movie):
     media = get_movie_media(movie)
-    with st.container():
-        trailer_html = ""
-        if media.get("trailer"):
-            trailer_logo_url = (
-                "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"
-                if media["trailer"]["source"] == "youtube"
-                else "https://upload.wikimedia.org/wikipedia/commons/d/df/ITunes_logo.svg"
-            )
-            trailer_html = f"""
-            <div style='margin-top:auto;text-align:center;'>
-                <a href='{media["trailer"]["url"]}' target='_blank'
-                style='display:inline-flex;align-items:center;justify-content:center;background:{media["trailer"]["button_color"]};
-                color:white;padding:8px 16px;border-radius:50px;text-decoration:none;font-weight:600;font-size:0.9rem;margin:0 auto;'>
-                    ▶ <img src="{trailer_logo_url}" style="width:20px;height:20px;margin-left:8px;">
+    
+    trailer_html = ""
+    if media.get("trailer"):
+        trailer_logo_url = (
+            "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"
+            if media["trailer"]["source"] == "youtube"
+            else "https://upload.wikimedia.org/wikipedia/commons/d/df/ITunes_logo.svg"
+        )
+        trailer_html = f"""
+            <div style='text-align:center;margin-top:10px;'>
+                <a href="{media["trailer"]["url"]}" target="_blank"
+                   style="display:inline-flex;align-items:center;gap:8px;
+                          padding:10px 20px;border-radius:30px;
+                          background:{media["trailer"]["button_color"]};color:white;
+                          text-decoration:none;font-weight:bold;">
+                    ▶ Watch Trailer
+                    <img src="{trailer_logo_url}" style="width:20px;height:20px;">
                 </a>
-            </div>"""
+            </div>
+        """
 
-        poster_html = f"""<img src='{media["poster"]}' 
-            onerror="this.onerror=null;this.src='{DEFAULT_THUMBNAIL}';"
-            style='width:100%;border-radius:8px;aspect-ratio:2/3;object-fit:contain;background:#f5f5f5;'>"""
-        
-        st.markdown(f"""
-        <div style='border-radius:12px;border:1px solid #e0e0e0;padding:16px;margin-bottom:24px;
-                    box-shadow:0 4px 12px rgba(0,0,0,0.08);background:white;display:flex;flex-direction:column;height:100%;'>
+    poster_html = f"""<img src="{media['poster']}" 
+        onerror="this.onerror=null;this.src='{DEFAULT_THUMBNAIL}';"
+        style="width:100%;border-radius:8px;aspect-ratio:2/3;object-fit:cover;background:#f5f5f5;">"""
+
+    full_card = f"""
+        <div style="border-radius:12px;border:1px solid #e0e0e0;padding:16px;
+                    box-shadow:0 4px 12px rgba(0,0,0,0.08);background:white;
+                    display:flex;flex-direction:column;height:100%;margin-bottom:24px;">
             {poster_html}
-            <h3 style='text-align:center;margin:12px 0 4px;font-size:1.2rem;font-weight:600;color:#333;'>
-                {movie['display_title']} ({movie['year']})
-            </h3>
-            <div style='text-align:center;margin:4px 0 12px;color:#666;font-size:0.9rem;'>
+            <h3 style="text-align:center;margin:12px 0 4px;font-size:1.2rem;
+                       font-weight:600;color:#333;">{movie['display_title']} ({movie['year']})</h3>
+            <div style="text-align:center;margin:4px 0 12px;color:#666;font-size:0.9rem;">
                 {', '.join(movie['genres'].split()[:3])}
             </div>
             {trailer_html}
-        </div>""", unsafe_allow_html=True)
+        </div>
+    """
+
+    st.markdown(full_card, unsafe_allow_html=True)
+
 
 
 def main():
