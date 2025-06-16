@@ -237,87 +237,138 @@ def movie_card(movie):
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    # Card container with vertical layout
-    with st.container():
-        st.markdown("""
-        <style>
-            .movie-card {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                padding: 16px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-                background: white;
-                margin-bottom: 24px;
-                text-align: center;
-                height: 100%;
-            }
-            .movie-poster {
-                margin-bottom: 16px;
-            }
-            .movie-title {
-                font-size: 1.3rem;
+    # Card container with minimal padding
+    st.markdown(f"""
+    <div style="
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 20px;
+        height: 100%;
+    ">
+        <!-- Larger poster image -->
+        <img src="{poster_url}" 
+             style="
+                width: 100%;
+                height: 300px;
+                object-fit: cover;
+                border-radius: 8px 8px 0 0;
+             "
+             onerror="this.src='{DEFAULT_THUMBNAIL}'"
+        >
+        
+        <!-- Movie details container -->
+        <div style="
+            padding: 12px;
+            background: white;
+            border-radius: 0 0 8px 8px;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+        ">
+            <!-- Title and year -->
+            <div style="
+                font-size: 1.1rem;
                 font-weight: 600;
-                margin: 12px 0 8px 0;
-            }
-            .movie-genres {
+                margin-bottom: 6px;
+            ">
+                {movie['display_title']} ({movie['year']})
+            </div>
+            
+            <!-- Genres -->
+            <div style="
                 color: #666;
-                margin-bottom: 16px;
-                font-size: 1rem;
+                font-size: 0.9rem;
+                margin-bottom: 12px;
+            ">
+                {', '.join(movie['genres'].split()[:3])}
+            </div>
+            
+            <!-- Trailer button -->
+            {f'''
+            <a href="{trailer['url']}" target="_blank"
+               style="
+                    display: block;
+                    background: {trailer['button_color']};
+                    color: white;
+                    padding: 8px;
+                    border-radius: 4px;
+                    text-align: center;
+                    text-decoration: none;
+                    font-weight: bold;
+                    font-size: 0.9rem;
+               ">
+                ▶ Watch Trailer
+            </a>
+            ''' if trailer else ''}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def main():
+    st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
+    
+    # Compact header with no extra space
+    st.markdown("""
+    <style>
+        .header {
+            background: linear-gradient(135deg,#6e48aa 0%,#9d50bb 100%);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            color: white;
+        }
+        .recommendations-title {
+            margin: 0.5rem 0 !important;
+            padding: 0 !important;
+        }
+        .recommendation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+            margin: 0;
+        }
+        @media (max-width: 768px) {
+            .recommendation-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
             }
-            .trailer-button {
-                margin-top: 12px;
-            }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        # Start card container
-        st.markdown('<div class="movie-card">', unsafe_allow_html=True)
-        
-        # Larger poster image (300px wide)
-        st.markdown(
-            f'<div class="movie-poster">'
-            f'<img src="{poster_url}" width="300" style="border-radius: 8px;">'
-            f'</div>',
-            unsafe_allow_html=True
-        )
-        
-        # Movie title and year
-        st.markdown(
-            f'<div class="movie-title">{movie["display_title"]} ({movie["year"]})</div>',
-            unsafe_allow_html=True
-        )
-        
-        # Genres
-        genres = ', '.join(movie['genres'].split()[:3])
-        st.markdown(
-            f'<div class="movie-genres"><b>Genres:</b> {genres}</div>',
-            unsafe_allow_html=True
-        )
-        
-        # Trailer button if available
-        if trailer:
-            logo = "▶️" if trailer['source'] == 'youtube' else "🎵"
+        }
+    </style>
+    <div class="header">
+        <h1 style='text-align:center;margin:0;font-size:1.5rem;'>🎬 Movie Recommendation Engine</h1>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    movies = load_data()
+    if movies is None: 
+        st.stop()
+    
+    cosine_sim = prepare_model(movies)
+    
+    with st.sidebar:
+        st.markdown("### 🎛️ Controls")
+        num_recs = st.slider("Number of recommendations", 3, 10, 5)
+    
+    selected = st.selectbox(
+        "🎞️ Select a movie you like:",
+        movies['title'].sort_values(),
+        index=movies['title'].tolist().index("Jumanji (1995)") if "Jumanji (1995)" in movies['title'].values else 0
+    )
+    
+    if st.button("🔍 Find Similar Movies", type="primary"):
+        with st.spinner("Finding recommendations..."):
+            idx = movies[movies['title'] == selected].index[0]
+            sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
+            
+            # Compact title with no extra space
             st.markdown(
-                f"""
-                <div class="trailer-button">
-                    <a href="{trailer['url']}" target="_blank"
-                       style="display: inline-block; 
-                              background: {trailer['button_color']}; 
-                              color: white; 
-                              padding: 12px 24px; 
-                              border-radius: 30px; 
-                              text-decoration: none; 
-                              font-weight: bold;
-                              font-size: 1rem;">
-                        {logo} Watch Trailer
-                    </a>
-                </div>
-                """,
+                f"<h2 class='recommendations-title'>Similar to: {movies.iloc[idx]['display_title']}</h2>",
                 unsafe_allow_html=True
             )
-        
-        # Close card container
-        st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Tight grid layout
+            st.markdown('<div class="recommendation-grid">', unsafe_allow_html=True)
+            for idx, score in sim_scores:
+                movie_card(movies.iloc[idx])
+            st.markdown('</div>', unsafe_allow_html=True)
 
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
