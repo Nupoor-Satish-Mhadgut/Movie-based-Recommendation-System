@@ -235,15 +235,15 @@ def get_movie_media(movie):
 
 
 
+
+
 def movie_card(movie):
     media = get_movie_media(movie)
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    # Use columns to separate HTML rendering from display
-    col1, col2 = st.columns([1])
-    with col1:
-        # This will properly render the HTML without showing the code
+    # Use a single column approach
+    with st.container():
         components.html(f"""
         <div style="
             border-radius: 8px;
@@ -296,7 +296,7 @@ def movie_card(movie):
                 ''' if trailer else ''}
             </div>
         </div>
-        """, height=400)
+        """, height=420)
 
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
