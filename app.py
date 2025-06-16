@@ -237,42 +237,37 @@ def movie_card(movie):
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    # Card container with styling
+    # Create a container with card styling
     with st.container():
         st.markdown("""
         <style>
-            .movie-card {
+            .movie-card-container {
                 border: 1px solid #e0e0e0;
                 border-radius: 12px;
                 padding: 16px;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.08);
                 background: white;
                 margin-bottom: 24px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                height: 100%;
+                text-align: center;
             }
             .movie-poster {
                 margin-bottom: 12px;
             }
             .movie-title {
-                text-align: center;
-                margin: 8px 0;
-                font-size: 1.1rem;
+                font-size: 1.2rem;
                 font-weight: 600;
+                margin: 8px 0;
             }
             .movie-genres {
-                text-align: center;
                 color: #666;
-                margin: 4px 0 12px 0;
+                margin-bottom: 12px;
                 font-size: 0.9rem;
-            }
-            .trailer-button {
-                margin-top: 8px;
             }
         </style>
         """, unsafe_allow_html=True)
+        
+        # Start the card container
+        st.markdown('<div class="movie-card-container">', unsafe_allow_html=True)
         
         # Poster image
         st.markdown(f'<div class="movie-poster"><img src="{poster_url}" width="200"></div>', 
@@ -287,23 +282,23 @@ def movie_card(movie):
         st.markdown(f'<div class="movie-genres"><b>Genres:</b> {genres}</div>', 
                    unsafe_allow_html=True)
         
-        # Trailer button
+        # Trailer button if available
         if trailer:
             logo = "▶️" if trailer['source'] == 'youtube' else "🎵"
             st.markdown(
                 f"""
-                <div class="trailer-button">
-                    <a href="{trailer['url']}" target="_blank"
-                       style="display: inline-block; align-items: center; gap: 8px;
-                              background: {trailer['button_color']}; color: white;
-                              padding: 10px 20px; border-radius: 30px; 
-                              text-decoration: none; font-weight: bold;">
-                        {logo} Watch Trailer
-                    </a>
-                </div>
+                <a href="{trailer['url']}" target="_blank"
+                   style="display: inline-block; background: {trailer['button_color']}; 
+                          color: white; padding: 10px 20px; border-radius: 30px; 
+                          text-decoration: none; font-weight: bold; margin-top: 8px;">
+                    {logo} Watch Trailer
+                </a>
                 """,
                 unsafe_allow_html=True
             )
+        
+        # Close the card container
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
