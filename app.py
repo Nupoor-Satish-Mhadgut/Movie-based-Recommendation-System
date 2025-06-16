@@ -178,27 +178,22 @@ def get_movie_media(movie):
 def movie_card(movie):
     media = get_movie_media(movie)
     with st.container():
-        # Platform logos
-        platform_logo = ""
-        if media.get("trailer"):
-            if media["trailer"]["source"] == "youtube":
-                platform_logo = """<span style="margin-left:8px;background:url('https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/20px-YouTube_full-color_icon_%282017%29.svg.png') no-repeat; width:20px; height:14px; display:inline-block; vertical-align:middle;"></span>"""
-            else:
-                platform_logo = """<span style="margin-left:8px;background:url('https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/ITunes_logo.svg/20px-ITunes_logo.svg.png') no-repeat; width:20px; height:14px; display:inline-block; vertical-align:middle;"></span>"""
-        
-        # Define trailer_html here (before using it)
         trailer_html = ""
         if media.get("trailer"):
+            trailer_logo_url = (
+                "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"
+                if media["trailer"]["source"] == "youtube"
+                else "https://upload.wikimedia.org/wikipedia/commons/d/df/ITunes_logo.svg"
+            )
             trailer_html = f"""
             <div style='margin-top:auto;text-align:center;'>
                 <a href='{media["trailer"]["url"]}' target='_blank'
                 style='display:inline-flex;align-items:center;justify-content:center;background:{media["trailer"]["button_color"]};
                 color:white;padding:8px 16px;border-radius:50px;text-decoration:none;font-weight:600;font-size:0.9rem;margin:0 auto;'>
-                    ▶{platform_logo}
+                    ▶ <img src="{trailer_logo_url}" style="width:20px;height:20px;margin-left:8px;">
                 </a>
             </div>"""
-        
-        # Use a more reliable poster display
+
         poster_html = f"""<img src='{media["poster"]}' 
             onerror="this.onerror=null;this.src='{DEFAULT_THUMBNAIL}';"
             style='width:100%;border-radius:8px;aspect-ratio:2/3;object-fit:contain;background:#f5f5f5;'>"""
@@ -213,8 +208,9 @@ def movie_card(movie):
             <div style='text-align:center;margin:4px 0 12px;color:#666;font-size:0.9rem;'>
                 {', '.join(movie['genres'].split()[:3])}
             </div>
-            {trailer_html if media.get("trailer") else ""}
+            {trailer_html}
         </div>""", unsafe_allow_html=True)
+
 
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
