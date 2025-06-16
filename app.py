@@ -54,7 +54,7 @@ def load_data():
 def fetch_poster(title, year):
     clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
     
-    # 1. Try OMDB API
+    # 1. First try with exact year match
     if OMDB_API_KEY:
         try:
             response = requests.get(
@@ -67,14 +67,13 @@ def fetch_poster(title, year):
                 return data['Poster']
         except Exception as e:
             logging.info(f"OMDB failed for {title}: {str(e)}")
-    
-    # 2. Try iTunes API
+
+    # 2. Try iTunes with year
     try:
-        query = f"{clean_title} {year}" if year else clean_title
         response = requests.get(
             "https://itunes.apple.com/search",
             params={
-                "term": query,
+                "term": f"{clean_title} {year}",
                 "media": "movie",
                 "limit": 1
             },
@@ -87,8 +86,8 @@ def fetch_poster(title, year):
                 return artwork.replace("100x100bb", "600x600bb")
     except Exception as e:
         logging.info(f"iTunes failed for {title}: {str(e)}")
-    
-    # 3. Try Wikipedia fallback
+
+    # 3. Try Wikipedia
     try:
         wiki_url = f"https://en.wikipedia.org/w/api.php?action=query&titles={clean_title}&prop=pageimages&format=json&pithumbsize=500"
         response = requests.get(wiki_url, timeout=3)
@@ -100,10 +99,12 @@ def fetch_poster(title, year):
                 return page['thumbnail']['source']
     except Exception as e:
         logging.info(f"Wikipedia failed for {title}: {str(e)}")
-    
-    return DEFAULT_THUMBNAIL
 
+    # 4. Final fallback - dynamic placeholder with title
+    title_text = f"{clean_title}+{year}" if year else clean_title
+    return f"https://via.placeholder.com/300x450/6e48aa/ffffff.png?text={title_text.replace(' ', '+')}"
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=10))
+
 def fetch_youtube_trailer(title):
     if not YOUTUBE_API_KEY: return None
     try:
@@ -179,14 +180,15 @@ def movie_card(movie):
     with st.container():
         # Platform logos
         platform_logo = ""
-        if media["trailer"]:
+        if media.get("trailer"):
             if media["trailer"]["source"] == "youtube":
                 platform_logo = """<span style="margin-left:8px;background:url('https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/20px-YouTube_full-color_icon_%282017%29.svg.png') no-repeat; width:20px; height:14px; display:inline-block; vertical-align:middle;"></span>"""
             else:
                 platform_logo = """<span style="margin-left:8px;background:url('https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/ITunes_logo.svg/20px-ITunes_logo.svg.png') no-repeat; width:20px; height:14px; display:inline-block; vertical-align:middle;"></span>"""
         
+        # Define trailer_html here (before using it)
         trailer_html = ""
-        if media["trailer"]:
+        if media.get("trailer"):
             trailer_html = f"""
             <div style='margin-top:auto;text-align:center;'>
                 <a href='{media["trailer"]["url"]}' target='_blank'
@@ -196,17 +198,22 @@ def movie_card(movie):
                 </a>
             </div>"""
         
+        # Use a more reliable poster display
+        poster_html = f"""<img src='{media["poster"]}' 
+            onerror="this.onerror=null;this.src='{DEFAULT_THUMBNAIL}';"
+            style='width:100%;border-radius:8px;aspect-ratio:2/3;object-fit:contain;background:#f5f5f5;'>"""
+        
         st.markdown(f"""
         <div style='border-radius:12px;border:1px solid #e0e0e0;padding:16px;margin-bottom:24px;
                     box-shadow:0 4px 12px rgba(0,0,0,0.08);background:white;display:flex;flex-direction:column;height:100%;'>
-            <img src='{media["poster"]}' style='width:100%;border-radius:8px;aspect-ratio:2/3;object-fit:contain;background:#f5f5f5;'>
+            {poster_html}
             <h3 style='text-align:center;margin:12px 0 4px;font-size:1.2rem;font-weight:600;color:#333;'>
                 {movie['display_title']} ({movie['year']})
             </h3>
             <div style='text-align:center;margin:4px 0 12px;color:#666;font-size:0.9rem;'>
                 {', '.join(movie['genres'].split()[:3])}
             </div>
-            {trailer_html if media["trailer"] else ""}
+            {trailer_html if media.get("trailer") else ""}
         </div>""", unsafe_allow_html=True)
 
 def main():
