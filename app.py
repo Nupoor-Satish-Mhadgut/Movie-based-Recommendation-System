@@ -22,6 +22,7 @@ if 'api_keys' not in st.secrets:
     st.error("❌ API keys missing in Streamlit secrets!")
     st.stop()
 
+TMDB_API_KEY = st.secrets["api_keys"].get("TMDB_API_KEY")
 YOUTUBE_API_KEY = st.secrets["api_keys"].get("YOUTUBE_API_KEY")
 OMDB_API_KEY = st.secrets["api_keys"].get("OMDB_API_KEY")
 
@@ -54,7 +55,41 @@ def load_data():
 def fetch_poster(title, year):
     clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
     
-    # 1. First try with exact year match
+    # 1. First try with TMDB
+    if TMDB_API_KEY:
+        try:
+            # Search for the movie to get its ID
+            search_url = "https://api.themoviedb.org/3/search/movie"
+            search_params = {
+                "api_key": TMDB_API_KEY,
+                "query": clean_title,
+                "year": year,
+                "language": "en-US"
+            }
+            search_response = requests.get(search_url, params=search_params, timeout=3)
+            search_response.raise_for_status()
+            search_data = search_response.json()
+            
+            if search_data.get('results') and len(search_data['results']) > 0:
+                movie_id = search_data['results'][0]['id']
+                
+                # Fetch movie details including images
+                movie_url = f"https://api.themoviedb.org/3/movie/{movie_id}"
+                movie_params = {
+                    "api_key": TMDB_API_KEY,
+                    "append_to_response": "images"
+                }
+                movie_response = requests.get(movie_url, params=movie_params, timeout=3)
+                movie_response.raise_for_status()
+                movie_data = movie_response.json()
+                
+                # Get the poster path if available
+                if movie_data.get('poster_path'):
+                    return f"https://image.tmdb.org/t/p/w500{movie_data['poster_path']}"
+        except Exception as e:
+            logging.info(f"TMDB failed for {title}: {str(e)}")
+    
+    # 2. Fallback to OMDB
     if OMDB_API_KEY:
         try:
             response = requests.get(
@@ -68,7 +103,7 @@ def fetch_poster(title, year):
         except Exception as e:
             logging.info(f"OMDB failed for {title}: {str(e)}")
 
-    # 2. Try iTunes with year
+    # 3. Try iTunes with year
     try:
         response = requests.get(
             "https://itunes.apple.com/search",
@@ -87,7 +122,7 @@ def fetch_poster(title, year):
     except Exception as e:
         logging.info(f"iTunes failed for {title}: {str(e)}")
 
-    # 3. Try Wikipedia
+    # 4. Try Wikipedia
     try:
         wiki_url = f"https://en.wikipedia.org/w/api.php?action=query&titles={clean_title}&prop=pageimages&format=json&pithumbsize=500"
         response = requests.get(wiki_url, timeout=3)
@@ -100,11 +135,11 @@ def fetch_poster(title, year):
     except Exception as e:
         logging.info(f"Wikipedia failed for {title}: {str(e)}")
 
-    # 4. Final fallback - dynamic placeholder with title
+    # 5. Final fallback - dynamic placeholder with title
     title_text = f"{clean_title}+{year}" if year else clean_title
     return f"https://via.placeholder.com/300x450/6e48aa/ffffff.png?text={title_text.replace(' ', '+')}"
-@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=10))
 
+@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=10))
 def fetch_youtube_trailer(title):
     if not YOUTUBE_API_KEY: return None
     try:
@@ -213,18 +248,7 @@ def movie_card(movie):
         """
 
     html_content += "</div>"
-
-    st.markdown("""
-<a href="https://youtu.be/dQw4w9WgXcQ" target="_blank"
-   style="display:inline-block;background:#FF0000;color:white;padding:10px 20px;
-          border-radius:30px;text-decoration:none;font-weight:bold;">
-    ▶ Watch Trailer
-    <img src="https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg"
-         style="width:20px;height:20px;margin-left:8px;">
-</a>
-""", unsafe_allow_html=True)
-
-
+    st.markdown(html_content, unsafe_allow_html=True)
 
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
@@ -257,7 +281,8 @@ def main():
             st.markdown(f"## 🎯 Similar to: **{movies.iloc[idx]['display_title']}**")
             cols = st.columns(min(3, len(sim_scores)))
             for i, (idx, score) in enumerate(sim_scores):
-                with cols[i % len(cols)]: movie_card(movies.iloc[idx])
+                with cols[i % len(cols)]: 
+                    movie_card(movies.iloc[idx])
 
 if __name__ == "__main__":
     main()
