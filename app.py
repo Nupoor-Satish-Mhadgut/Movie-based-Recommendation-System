@@ -9,9 +9,21 @@ import os
 from tenacity import retry, stop_after_attempt, wait_exponential
 import re
 import html
+import logging
 
+# Configure logging
+logging.basicConfig(filename='poster_errors.log', level=logging.INFO)
+
+# Constants
 DEFAULT_THUMBNAIL = "https://via.placeholder.com/300x450.png?text=No+Poster"
 MOVIELENS_URL = "https://files.grouplens.org/datasets/movielens/ml-latest-small.zip"
+
+# Manual poster overrides for classic films
+POSTER_OVERRIDES = {
+    "Casablanca (1942)": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/CasablancaPoster-Gold.jpg/300px-CasablancaPoster-Gold.jpg",
+    "Gone with the Wind (1939)": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Poster_-_Gone_With_the_Wind_01.jpg/300px-Poster_-_Gone_With_the_Wind_01.jpg",
+    "The Wizard of Oz (1939)": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Wizard_of_oz_movie_poster.jpg/300px-Wizard_of_oz_movie_poster.jpg"
+}
 
 if 'api_keys' not in st.secrets:
     st.error("❌ API keys missing in Streamlit secrets!")
@@ -45,7 +57,67 @@ def load_data():
     except Exception as e:
         st.error(f"🚨 Error loading data: {str(e)}")
         return None
+
+def fetch_poster(title, year):
+    clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
     
+    # 1. Check manual overrides first
+    if title in POSTER_OVERRIDES:
+        return POSTER_OVERRIDES[title]
+    
+    # 2. Try OMDB API
+    if OMDB_API_KEY:
+        try:
+            response = requests.get(
+                "http://www.omdbapi.com/",
+                params={"t": clean_title, "y": year, "apikey": OMDB_API_KEY, "r": "json"},
+                timeout=3
+            )
+            data = response.json()
+            if data.get('Poster') not in [None, 'N/A']:
+                return data['Poster']
+        except Exception as e:
+            logging.info(f"OMDB failed for {title}: {str(e)}")
+    
+    # 3. Try iTunes API
+    try:
+        query = f"{clean_title} {year}" if year else clean_title
+        response = requests.get(
+            "https://itunes.apple.com/search",
+            params={
+                "term": query,
+                "media": "movie",
+                "entity": "movie",
+                "limit": 1,
+                "country": "US"
+            },
+            timeout=3
+        )
+        data = response.json()
+        if data.get("resultCount", 0) > 0:
+            artwork = data["results"][0].get("artworkUrl100", "")
+            if artwork:
+                return artwork.replace("100x100bb", "600x600bb")
+    except Exception as e:
+        logging.info(f"iTunes failed for {title}: {str(e)}")
+    
+    # 4. Try Wikipedia (fallback)
+    try:
+        wiki_url = f"https://en.wikipedia.org/w/api.php?action=query&titles={clean_title}&prop=pageimages&format=json&pithumbsize=500"
+        response = requests.get(wiki_url, timeout=3)
+        data = response.json()
+        pages = data.get('query', {}).get('pages', {})
+        if pages:
+            page = next(iter(pages.values()))
+            if 'thumbnail' in page:
+                return page['thumbnail']['source']
+    except Exception as e:
+        logging.info(f"Wikipedia failed for {title}: {str(e)}")
+    
+    # 5. Create dynamic placeholder
+    title_text = f"{clean_title}+{year}" if year else clean_title
+    return f"https://via.placeholder.com/300x450/6e48aa/ffffff.png?text={title_text.replace(' ', '+')}"
+
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=10))
 def fetch_youtube_trailer(title):
     if not YOUTUBE_API_KEY: return None
@@ -67,7 +139,9 @@ def fetch_youtube_trailer(title):
         response.raise_for_status()
         data = response.json()
         return f"https://youtu.be/{data['items'][0]['id']['videoId']}" if data.get('items') else None
-    except Exception: return None
+    except Exception as e:
+        logging.info(f"YouTube failed for {title}: {str(e)}")
+        return None
 
 def fetch_itunes_trailer(title, year=None):
     try:
@@ -76,15 +150,20 @@ def fetch_itunes_trailer(title, year=None):
         response = requests.get(
             "https://itunes.apple.com/search",
             params={
-                "term": query, "media": "movie", "entity": "movie",
-                "limit": 1, "country": "US"
+                "term": query,
+                "media": "movie",
+                "entity": "movie",
+                "limit": 1,
+                "country": "US"
             },
             timeout=5
         )
         response.raise_for_status()
         data = response.json()
         return data["results"][0].get("previewUrl") if data.get("resultCount", 0) > 0 else None
-    except Exception: return None
+    except Exception as e:
+        logging.info(f"iTunes trailer failed for {title}: {str(e)}")
+        return None
 
 def get_best_trailer(title, year):
     youtube_url = fetch_youtube_trailer(title)
@@ -93,39 +172,11 @@ def get_best_trailer(title, year):
     if itunes_url: return {'url': itunes_url, 'source': 'itunes', 'button_color': '#000000', 'badge': 'iTunes'}
     return None
 
-def fetch_poster(title, year):
-    if OMDB_API_KEY:
-        try:
-            clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
-            response = requests.get(
-                "http://www.omdbapi.com/",
-                params={"t": clean_title, "y": year, "apikey": OMDB_API_KEY, "r": "json"},
-                timeout=5
-            )
-            response.raise_for_status()
-            data = response.json()
-            if data.get('Poster') and data['Poster'] != 'N/A': return data['Poster']
-        except Exception: pass
-    
-    try:
-        clean_title = re.sub(r'\(\d{4}\)', '', title).strip()
-        query = f"{clean_title} {year}" if year else clean_title
-        response = requests.get(
-            "https://itunes.apple.com/search",
-            params={"term": query, "media": "movie", "entity": "movie", "limit": 1, "country": "US"},
-            timeout=5
-        )
-        response.raise_for_status()
-        data = response.json()
-        if data.get("resultCount", 0) > 0:
-            return data["results"][0].get("artworkUrl100", "").replace("100x100bb", "600x600bb")
-    except Exception: return None
-
 @st.cache_data(ttl=3600)
 def get_movie_media(movie):
     poster = fetch_poster(movie['title'], movie.get('year'))
     return {
-        'poster': poster if poster else DEFAULT_THUMBNAIL,
+        'poster': poster,
         'trailer': get_best_trailer(movie['title'], movie.get('year'))
     }
 
