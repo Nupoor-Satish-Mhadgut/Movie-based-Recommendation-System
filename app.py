@@ -242,90 +242,96 @@ def movie_card(movie):
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    # Use a single column approach
-    with st.container():
-        components.html(f"""
-        <div style="
-            border-radius: 8px;
+    components.html(f"""
+    <style>
+        .movie-card {{
+            width: 150px;
+            margin: 0 10px 20px 0;
+            position: relative;
+            transition: transform 0.3s;
+            display: inline-block;
+        }}
+        .movie-card:hover {{
+            transform: scale(1.1);
+            z-index: 2;
+        }}
+        .movie-poster {{
+            width: 100%;
+            height: 225px;
+            object-fit: cover;
+            border-radius: 4px;
+        }}
+        .movie-info {{
+            display: none;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 0 0 4px 4px;
+        }}
+        .movie-card:hover .movie-info {{
+            display: block;
+        }}
+        .movie-title {{
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 5px;
+            white-space: nowrap;
             overflow: hidden;
-            background: white;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            height: 100%;
-        ">
-            <img src="{poster_url}" 
-                 style="
-                    width: 100%;
-                    height: 300px;
-                    object-fit: cover;
-                 "
-                 onerror="this.src='{DEFAULT_THUMBNAIL}'"
-            >
-            
-            <div style="padding: 12px;">
-                <div style="
-                    font-size: 1.1rem;
-                    font-weight: 600;
-                    margin-bottom: 6px;
-                ">
-                    {movie['display_title']} ({movie['year']})
-                </div>
-                
-                <div style="
-                    color: #666;
-                    font-size: 0.9rem;
-                    margin-bottom: 12px;
-                ">
-                    {', '.join(movie['genres'].split()[:3])}
-                </div>
-                
-                {f'''
-                <a href="{trailer['url']}" target="_blank"
-                   style="
-                        display: block;
-                        background: {trailer['button_color']};
-                        color: white;
-                        padding: 8px;
-                        border-radius: 4px;
-                        text-align: center;
-                        text-decoration: none;
-                        font-weight: bold;
-                   ">
-                    ▶ Watch Trailer
-                </a>
-                ''' if trailer else ''}
-            </div>
+            text-overflow: ellipsis;
+        }}
+        .movie-meta {{
+            font-size: 10px;
+            color: #d2d2d2;
+            margin-bottom: 8px;
+        }}
+        .trailer-btn {{
+            background: #e50914;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+            width: 100%;
+        }}
+    </style>
+
+    <div class="movie-card">
+        <img src="{poster_url}" class="movie-poster" onerror="this.src='{DEFAULT_THUMBNAIL}'">
+        <div class="movie-info">
+            <div class="movie-title">{movie['display_title']}</div>
+            <div class="movie-meta">{movie['year']} • {', '.join(movie['genres'].split()[:2])}</div>
+            {f'<a href="{trailer["url"]}" target="_blank" class="trailer-btn">▶ Play</a>' if trailer else ''}
         </div>
-        """, height=420)
+    </div>
+    """, height=250)
 
 def main():
-    st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
+    st.set_page_config(layout="wide", page_title="Movie Recommendations", page_icon="🎬")
     
-    # Header and grid styling
     st.markdown("""
     <style>
-        .header {
-            background: linear-gradient(135deg,#6e48aa 0%,#9d50bb 100%);
-            padding: 1.5rem;
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
+        .row-container {{
+            display: flex;
+            overflow-x: auto;
+            padding: 10px 0;
+            background: #141414;
+            margin-bottom: 30px;
+        }}
+        .row-container::-webkit-scrollbar {{
+            display: none;
+        }}
+        .row-title {{
             color: white;
-        }
-        .recommendation-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 20px;
-            margin-top: 1rem;
-        }
-        @media (max-width: 768px) {
-            .recommendation-grid {
-                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            }
-        }
+            font-size: 1.2rem;
+            margin: 10px 0 5px 0;
+            padding-left: 20px;
+        }}
     </style>
-    <div class="header">
-        <h1 style='text-align:center;margin:0;'>🎬 Movie Recommendation Engine</h1>
-    </div>
     """, unsafe_allow_html=True)
     
     movies = load_data()
@@ -346,15 +352,13 @@ def main():
         index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0
     )
     
-    if st.button("🔍 Find Similar Movies", type="primary", use_container_width=True):
+    if st.button("🔍 Find Similar Movies"):
         with st.spinner("Finding recommendations..."):
             idx = movies[movies['title'] == selected].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
             
-            st.markdown(f"## Similar to: **{movies.iloc[idx]['display_title']}**")
-            
-            # Grid layout for recommendations
-            st.markdown('<div class="recommendation-grid">', unsafe_allow_html=True)
+            st.markdown(f'<div class="row-title">Similar to {movies.iloc[idx]["display_title"]}</div>', unsafe_allow_html=True)
+            st.markdown('<div class="row-container">', unsafe_allow_html=True)
             for idx, score in sim_scores:
                 movie_card(movies.iloc[idx])
             st.markdown('</div>', unsafe_allow_html=True)
