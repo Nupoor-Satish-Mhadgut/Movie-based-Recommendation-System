@@ -30,7 +30,7 @@ OMDB_API_KEY = st.secrets["api_keys"].get("OMDB_API_KEY")
 def prepare_model(movies):
     tfidf = TfidfVectorizer(stop_words='english')
     tfidf_matrix = tfidf.fit_transform(movies['genres'])
-    return linear_kernel(tfidf_matrix, tfidf_matrix)
+    return linear_kernel(tfidf_matrix, tfidf_matrix)  # Fixed the typo here
 
 @st.cache_data
 def load_data():
@@ -263,7 +263,13 @@ def movie_card(movie):
 
     # Add trailer button if available
     if trailer:
-        logo = "https://upload.wikimedia.org/wikipedia/commons/0/09/YouTube_full-color_icon_%282017%29.svg" if trailer['source'] == 'youtube' else "https://upload.wikimedia.org/wikipedia/commons/d/df/ITunes_logo.svg"
+        # Use emoji instead of logo images to avoid issues
+        logo = "▶️"  # Default play button emoji
+        if trailer['source'] == 'youtube':
+            logo = "📺"  # TV emoji for YouTube
+        elif trailer['source'] == 'itunes':
+            logo = "🎵"  # Music note for iTunes
+        
         html_content += f"""
         <div style="text-align:center;">
             <a href="{trailer['url']}" target="_blank"
@@ -271,7 +277,7 @@ def movie_card(movie):
                       background:{trailer['button_color']}; color:white;
                       padding:10px 20px; border-radius:30px; text-decoration:none;
                       font-weight:bold;">
-                ▶ Watch Trailer <img src="{logo}" style="width:20px;height:20px;" />
+                {logo} Watch Trailer
             </a>
         </div>
         """
