@@ -284,7 +284,9 @@ def movie_card(movie):
                     padding: 5px 10px;
                     border-radius: 3px;
                     font-size: 12px;
-                    text-decoration: none;
+                    border: none;
+                    outline: none;
+                    box-shadow: none;
                ">
                 ▶ Play
             </a>
@@ -322,7 +324,7 @@ def main():
         }
     </style>
     <div class="header">
-        <h1 style='color:#e50914;text-align:center;margin:0;'>Movie Recommendations</h1>
+        <h1 style='color:#e50914;text-align:center;margin:0;'>Nupoor Mhadgut's Movie Recommendations</h1>
     </div>
     """, unsafe_allow_html=True)
     
