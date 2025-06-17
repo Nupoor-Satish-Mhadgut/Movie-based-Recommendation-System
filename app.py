@@ -324,11 +324,28 @@ def main():
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         
-        .movie-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 25px;
+        .movie-row {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
             padding: 20px 0;
+            gap: 25px;
+            scrollbar-width: thin;
+            scrollbar-color: #e50914 #2a2a40;
+        }
+        
+        .movie-row::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        .movie-row::-webkit-scrollbar-track {
+            background: #2a2a40;
+            border-radius: 10px;
+        }
+        
+        .movie-row::-webkit-scrollbar-thumb {
+            background-color: #e50914;
+            border-radius: 10px;
         }
         
         /* Fixed dropdown behavior */
@@ -466,13 +483,13 @@ def main():
             
             st.markdown(f'<div class="section-title">Because you watched: <span style="color:#e50914">{movies.iloc[idx]["display_title"]}</span></div>', unsafe_allow_html=True)
             
-            # Create movie grid
-            grid_html = '<div class="movie-grid">'
+            # Create horizontal movie row with scroll
+            row_html = '<div class="movie-row">'
             for idx, score in sim_scores:
-                grid_html += movie_card(movies.iloc[idx])
-            grid_html += '</div>'
+                row_html += movie_card(movies.iloc[idx])
+            row_html += '</div>'
             
-            st.markdown(grid_html, unsafe_allow_html=True)
+            st.markdown(row_html, unsafe_allow_html=True)
             
             # Add footer
             st.markdown("""
