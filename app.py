@@ -232,17 +232,48 @@ def get_movie_media(movie):
         'trailer': get_best_trailer(movie['title'], movie.get('year'))
     }
 
-# ... (keep all the imports and previous functions exactly the same until main())
-
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
     
-    # Custom CSS with all fixes
+    # Custom CSS
     st.markdown("""
     <style>
-        /* ... (keep all your existing CSS styles the same) ... */
-        
-        /* Add modal styles */
+        .movie-row {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            gap: 25px;
+            padding: 20px 0;
+            width: 100%;
+        }
+        .movie-row::-webkit-scrollbar {
+            height: 8px;
+        }
+        .movie-row::-webkit-scrollbar-thumb {
+            background: #e50914;
+            border-radius: 4px;
+        }
+        .movie-card {
+            min-width: 220px;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+        .movie-card:hover {
+            transform: scale(1.03);
+        }
+        .trailer-btn {
+            display: inline-block;
+            background: #e50914;
+            color: white !important;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            text-decoration: none !important;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
         .trailer-modal {
             position: fixed;
             top: 0;
@@ -311,7 +342,6 @@ def main():
     # Handle trailer clicks from URL params
     if "trailer" in query_params and query_params["trailer"] != '#':
         trailer_url = query_params["trailer"]
-        # Convert YouTube watch URL to embed URL if needed
         embed_url = trailer_url.replace('youtu.be/', 'youtube.com/embed/') \
                               .replace('watch?v=', 'embed/') \
                               .replace('http://', 'https://')
@@ -355,12 +385,13 @@ def main():
                 media = get_movie_media(movie)
                 
                 # Generate the correct query params URL
-                trailer_link = st.query_params.to_dict()
                 if media.get('trailer'):
-                    trailer_link['trailer'] = media['trailer']['url']
+                    new_params = dict(query_params)
+                    new_params['trailer'] = media['trailer']['url']
+                    trailer_url = "?" + "&".join(f"{k}={v}" for k, v in new_params.items())
                 else:
-                    trailer_link['trailer'] = '#'
-                
+                    trailer_url = "#"
+
                 st.markdown(f"""
                 <div class="movie-card">
                     <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" 
@@ -373,7 +404,7 @@ def main():
                         <div style="font-size:13px; color:#aaa; margin:8px 0 12px;">
                             {movie['year']} • {', '.join(movie['genres'].split()[:2])}
                         </div>
-                        <a href="{st.experimental_get_query_params().replace(trailer=media['trailer']['url'] if media.get('trailer') else '#')}" 
+                        <a href="{trailer_url}" 
                            class="trailer-btn"
                            style="{'display:none;' if not media.get('trailer') else ''}">
                             ▶ Watch Trailer
