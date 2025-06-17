@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 import requests
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -233,138 +232,289 @@ def get_movie_media(movie):
         'trailer': get_best_trailer(movie['title'], movie.get('year'))
     }
 
-
 def movie_card(movie):
     media = get_movie_media(movie)
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
+    # Escape HTML in title to prevent XSS
+    safe_title = html.escape(movie['display_title'])
+    safe_genres = html.escape(', '.join(movie['genres'].split()[:2]))
+    safe_year = html.escape(str(movie['year'])) if pd.notna(movie['year']) else "Unknown"
+
     card_html = f"""
     <div style="
         display: inline-block;
-        width: 200px;
-        margin-right: 20px;
+        width: 220px;
+        margin-right: 25px;
+        margin-bottom: 30px;
         vertical-align: top;
     ">
-        <img src="{poster_url}" 
-             style="
-                width: 100%;
-                height: 300px;
-                object-fit: cover;
-                border-radius: 4px;
-             "
-             onerror="this.src='{DEFAULT_THUMBNAIL}'"
-        >
         <div style="
-            padding: 10px 0;
-            color: white;
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            background: #2a2a40;
         ">
+            <img src="{poster_url}" 
+                 style="
+                    width: 100%;
+                    height: 330px;
+                    object-fit: cover;
+                    display: block;
+                 "
+                 onerror="this.src='{DEFAULT_THUMBNAIL}'"
+            >
             <div style="
-                font-weight: bold;
-                font-size: 14px;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
+                padding: 15px;
+                background: rgba(0,0,0,0.8);
             ">
-                {movie['display_title']}
-            </div>
-            <div style="
-                font-size: 12px;
-                color: #d2d2d2;
-                margin: 5px 0;
-            ">
-                {movie['year']} • {', '.join(movie['genres'].split()[:2])}
-            </div>
-            {f'''
-            <a href="{trailer['url']}" target="_blank"
-               style="
-                    display: inline-block;
-                    background: #e50914;
+                <div style="
+                    font-weight: 600;
+                    font-size: 16px;
+                    margin-bottom: 8px;
                     color: white;
-                    padding: 5px 10px;
-                    border-radius: 3px;
-                    font-size: 12px;
-                    text-decoration: none !important;
-                    border: none !important;
-                    outline: none !important;
-                    box-shadow: none !important;
-                    -webkit-tap-highlight-color: transparent;
-                    "
-                      onfocus='this.blur();'
-                      onmousedown='return false;'
-                      onmouseup='return true;'
-               ">
-                ▶ Play
-            </a>
-            ''' if trailer else ''}
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                ">
+                    {safe_title}
+                </div>
+                <div style="
+                    font-size: 13px;
+                    color: #e0e0e0;
+                    margin-bottom: 12px;
+                ">
+                    {safe_year} • {safe_genres}
+                </div>
+                {f'''
+                <a href="{trailer['url']}" target="_blank"
+                   style="
+                        display: inline-block;
+                        background: #e50914;
+                        color: white;
+                        padding: 8px 16px;
+                        border-radius: 4px;
+                        font-size: 13px;
+                        text-decoration: none !important;
+                        font-weight: 500;
+                   ">
+                    ▶ Play Trailer
+                </a>
+                ''' if trailer else ''}
+            </div>
         </div>
     </div>
     """
     return card_html
 
 def main():
-    st.set_page_config(layout="wide", page_title="Nupoor Mhadgut's Movie Recommendations", page_icon="🎬")
+    st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
     
     st.markdown("""
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+        
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+        
         .header {
-            background: #141414;
-            padding: 1rem;
-            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            padding: 2rem 3rem;
+            margin-bottom: 2rem;
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
-        .movie-row-container {
-            width: 100%;
+        
+        .movie-row {
+            display: flex;
+            flex-wrap: nowrap;
             overflow-x: auto;
-            white-space: nowrap;
             padding: 20px 0;
+            gap: 25px;
+            scrollbar-width: thin;
+            scrollbar-color: #e50914 #2a2a40;
         }
-        body {
-            background-color: #141414;
-            margin: 0;
-            padding: 0;
+        
+        .movie-row::-webkit-scrollbar {
+            height: 8px;
         }
+        
+        .movie-row::-webkit-scrollbar-track {
+            background: #2a2a40;
+            border-radius: 10px;
+        }
+        
+        .movie-row::-webkit-scrollbar-thumb {
+            background-color: #e50914;
+            border-radius: 10px;
+        }
+        
+        /* Fixed dropdown behavior */
+        div[data-baseweb="select"] > div:first-child {
+            position: relative;
+        }
+        
+        div[data-baseweb="popover"] {
+            top: 100% !important;
+            bottom: auto !important;
+            position: absolute !important;
+            width: 100% !important;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        
+        .select-container {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 3rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .stButton>button {
+            background: linear-gradient(to right, #e50914 0%, #b00710 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(229,9,20,0.3);
+            width: 100%;
+        }
+        
+        .stButton>button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(229,9,20,0.4);
+        }
+        
+        .stApp {
+            background: linear-gradient(to bottom, #1a1a2e 0%, #16213e 100%);
+            color: white;
+        }
+        
         .section-title {
             color: white;
-            font-size: 1.3rem;
-            margin: 10px 0;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 20px 0 30px 0;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .section-title:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: #e50914;
+            border-radius: 2px;
+        }
+        
+        /* Remove blank space at the bottom */
+        .st-emotion-cache-1y4p8pa {
+            padding: 1rem 1rem 10px;
         }
     </style>
+    """, unsafe_allow_html=True)
+
+    # Header Section
+    st.markdown("""
     <div class="header">
-        <h1 style='color:#e50914;text-align:center;margin:0;'>Nupoor Mhadgut's Movie Recommendations</h1>
+        <h1 style="
+            text-align:center;
+            margin:0;
+            color:white;
+            font-size:2.5rem;
+            font-weight:700;
+            letter-spacing:1px;
+        ">
+            🎬 Nupoor Mhadgut's Movie Recommendation Engine
+        </h1>
+        <p style="
+            text-align:center;
+            color:rgba(255,255,255,0.8);
+            margin:0.5rem 0 0;
+            font-size:1.1rem;
+        ">
+            Discover your next favorite movie with AI-powered recommendations
+        </p>
     </div>
     """, unsafe_allow_html=True)
-    
+
     movies = load_data()
     if movies is None: 
         st.stop()
     
     cosine_sim = prepare_model(movies)
     
-    # Movie selection in main page
-    selected = st.selectbox(
-        "🎞️ Select a movie you like:",
-        movies['title'].sort_values(),
-        index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0
-    )
+    # Movie Selection Section
+    with st.container():
+        st.markdown('<div class="select-container">', unsafe_allow_html=True)
+        
+        selected = st.selectbox(
+            "🎞️ SELECT A MOVIE YOU LIKE:",
+            movies['title'].sort_values(),
+            index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0,
+            key="movie_select"
+        )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     with st.sidebar:
-        st.markdown("### Controls")
+        st.markdown("""
+        <div style="
+            background: rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        ">
+            <h3 style="color:white; margin-top:0;">⚙️ CONTROLS</h3>
+            <p style="color:rgba(255,255,255,0.7); font-size:0.9rem;">
+                Customize your recommendations
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         num_recs = st.slider("Number of recommendations", 3, 20, 6)
     
-    if st.button("🔍 Find Similar Movies"):
-        with st.spinner("Finding recommendations..."):
+    if st.button("🔍 FIND SIMILAR MOVIES", key="find_movies"):
+        with st.spinner("Analyzing preferences..."):
             idx = movies[movies['title'] == selected].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
             
-            st.markdown(f'<div class="section-title">Because you watched: {movies.iloc[idx]["display_title"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="section-title">Because you watched: <span style="color:#e50914">{html.escape(movies.iloc[idx]["display_title"])}</span></div>', unsafe_allow_html=True)
             
-            # Create horizontal scrolling row
-            row_html = '<div class="movie-row-container">'
+            # Create horizontal movie row with scroll
+            row_html = '<div class="movie-row">'
             for idx, score in sim_scores:
                 row_html += movie_card(movies.iloc[idx])
             row_html += '</div>'
             
-            st.components.v1.html(row_html, height=400)
+            st.markdown(row_html, unsafe_allow_html=True)
+            
+            # Add footer
+            st.markdown("""
+            <div style="
+                text-align:center;
+                margin-top:4rem;
+                padding:2rem 0;
+                color:rgba(255,255,255,0.6);
+                font-size:0.9rem;
+                border-top:1px solid rgba(255,255,255,0.1);
+            ">
+                <p>AI-Powered Movie Recommendation System</p>
+                <p>Built with Python, Streamlit, and TMDB API</p>
+            </div>
+            """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
