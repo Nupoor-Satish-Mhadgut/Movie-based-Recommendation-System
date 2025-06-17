@@ -239,120 +239,73 @@ def movie_card(movie):
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    return f"""
-    <div class="movie-card">
-        <img src="{poster_url}" class="movie-poster" onerror="this.src='{DEFAULT_THUMBNAIL}'">
-        <div class="movie-info">
-            <div class="movie-title">{movie['display_title']}</div>
-            <div class="movie-meta">{movie['year']} • {', '.join(movie['genres'].split()[:2])}</div>
-            {f'<a href="{trailer["url"]}" target="_blank" class="trailer-btn">▶ Play</a>' if trailer else ''}
-        </div>
-    </div>
-    """
+    # Use columns to create a horizontal layout
+    with st.container():
+        col1, col2 = st.columns([1, 3])  # Adjust ratio as needed
+        with col1:
+            st.image(poster_url, width=150)  # Smaller poster size
+        with col2:
+            st.markdown(f"**{movie['display_title']} ({movie['year']})**")
+            st.caption(f"Genres: {', '.join(movie['genres'].split()[:3])}")
+            if trailer:
+                st.markdown(f"[Watch Trailer]({trailer['url']})")
+
 def main():
-    st.set_page_config(layout="wide", page_title="Movie Recommendations", page_icon="🎬")
+    st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
     
+    # Header
     st.markdown("""
     <style>
+        .header {
+            background: linear-gradient(135deg,#6e48aa 0%,#9d50bb 100%);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            color: white;
+        }
         .movie-row {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            display: flex;
+            overflow-x: auto;
             gap: 20px;
-            margin-bottom: 30px;
+            padding: 10px 0;
         }
-        .movie-card {
-            width: 100%;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-        .movie-poster {
-            width: 100%;
-            height: 240px;
-            object-fit: cover;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-        .movie-info {
-            opacity: 0;
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
-            color: white;
-            padding: 15px 10px 10px;
-            border-radius: 0 0 4px 4px;
-            transition: opacity 0.3s ease;
-        }
-        .movie-card:hover .movie-info {
-            opacity: 1;
-        }
-        .movie-title {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .movie-meta {
-            font-size: 11px;
-            color: #d2d2d2;
-            margin-bottom: 8px;
-        }
-        .trailer-btn {
-            background: #e50914;
-            color: white;
-            border: none;
-            padding: 6px 0;
-            border-radius: 3px;
-            font-size: 12px;
-            width: 100%;
-            text-align: center;
-            display: block;
-            text-decoration: none;
-        }
-        body {
-            background-color: #141414;
-            color: white;
-        }
-        .section-title {
-            font-size: 1.3rem;
-            margin: 20px 0 15px 0;
+        .movie-row::-webkit-scrollbar {
+            display: none;
         }
     </style>
+    <div class="header">
+        <h1 style='text-align:center;margin:0;'>🎬 Nupoor Mhadgut's Movie Recommendation Engine</h1>
+    </div>
     """, unsafe_allow_html=True)
-
-    # Your existing data loading code
+    
     movies = load_data()
     if movies is None: 
         st.stop()
     
     cosine_sim = prepare_model(movies)
     
+    # Move movie selection to main page
+    selected = st.selectbox(
+        "🎞️ Select a movie you like:",
+        movies['title'].sort_values(),
+        index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0
+    )
+    
     with st.sidebar:
         st.markdown("### 🎛️ Controls")
-        num_recs = st.slider("Number of recommendations", 3, 9, 6)  # Multiples of 3 work best
-        selected = st.selectbox(
-            "Select a movie:",
-            movies['title'].sort_values(),
-            index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0
-        )
+        num_recs = st.slider("Number of recommendations", 3, 10, 6)
     
     if st.button("🔍 Find Similar Movies"):
         with st.spinner("Finding recommendations..."):
             idx = movies[movies['title'] == selected].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
             
-            st.markdown(f'<div class="section-title">Similar to: {movies.iloc[idx]["display_title"]}</div>', unsafe_allow_html=True)
+            st.markdown(f"## Similar to: **{movies.iloc[idx]['display_title']}**")
             
-            # Create rows with 3 movies each
+            # Horizontal scrolling row
             st.markdown('<div class="movie-row">', unsafe_allow_html=True)
-            for i, (idx, score) in enumerate(sim_scores):
-                components.html(movie_card(movies.iloc[idx]), height=300)
-                # Start new row after every 3 movies
-                if (i+1) % 3 == 0 and (i+1) != len(sim_scores):
-                    st.markdown('</div><div class="movie-row">', unsafe_allow_html=True)
+            for idx, score in sim_scores:
+                movie_card(movies.iloc[idx])
             st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
