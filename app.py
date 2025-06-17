@@ -315,58 +315,52 @@ def main():
     # Custom CSS with all fixes
     st.markdown("""
     <style>
-        /* 1. DROPDOWN FIX - Forces consistent downward opening */
-        div[data-baseweb="select"] {
+        /* 1. PERMANENT DROPDOWN FIX */
+        div[data-baseweb="select"] > div:first-child {
             position: relative;
-            z-index: 999;
+            z-index: 1;
         }
         div[data-baseweb="popover"] {
-            z-index: 1000 !important;
+            position: absolute !important;
             top: 100% !important;
             bottom: auto !important;
             left: 0 !important;
             width: 100% !important;
             max-height: 300px;
             overflow-y: auto;
+            z-index: 1001 !important;
         }
 
-        /* 2. HORIZONTAL SCROLL CONTAINER */
-        .movie-scroller {
-            display: flex;
-            overflow-x: auto;
+        /* 2. HORIZONTAL SCROLL CONTAINER (FIXED) */
+        .movie-scroll-container {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
             gap: 25px;
             padding: 20px 0;
-            scrollbar-width: thin;
+            width: 100%;
         }
-        .movie-scroller::-webkit-scrollbar {
+        .movie-scroll-container::-webkit-scrollbar {
             height: 8px;
         }
-        .movie-scroller::-webkit-scrollbar-thumb {
+        .movie-scroll-container::-webkit-scrollbar-thumb {
             background: #e50914;
             border-radius: 4px;
         }
 
-        /* 3. MOVIE CARD STYLING */
-        .movie-card {
-            min-width: 220px;
-            flex-shrink: 0;
-            transition: transform 0.2s;
-        }
-        .movie-card:hover {
-            transform: scale(1.03);
+        /* 3. SIDEBAR DROPDOWN FIX */
+        section[data-testid="stSidebar"] div[data-baseweb="popover"] {
+            top: 100% !important;
+            bottom: auto !important;
         }
 
-        /* 4. LAYOUT FIXES */
-        .stApp {
-            padding-top: 1rem;
-            padding-bottom: 1rem;
-        }
-        .stButton>button {
-            transition: all 0.3s;
-        }
-        .stButton>button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(229, 9, 20, 0.4);
+        /* 4. HTML ENTITY FIX */
+        .movie-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -385,10 +379,9 @@ def main():
         margin-bottom: 2rem;
         border-radius: 0 0 20px 20px;
         text-align: center;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     ">
-        <h1 style="color:white; margin:0; font-size:2.5rem;">🎬 Nupoor Mhadgut's Movie Recommendation Engine</h1>
-        <p style="color:rgba(255,255,255,0.8); margin:0.5rem 0 0; font-size:1.1rem;">
+        <h1 style="color:white; margin:0;">🎬 Movie Recommendation Engine</h1>
+        <p style="color:rgba(255,255,255,0.8); margin:0.5rem 0 0;">
             Discover your next favorite movie
         </p>
     </div>
@@ -400,7 +393,7 @@ def main():
     
     cosine_sim = prepare_model(movies)
 
-    # Movie selection
+    # Movie selection - moved to main area instead of sidebar
     selected = st.selectbox(
         "🎞️ SELECT A MOVIE YOU LIKE:",
         movies['title'].sort_values(),
@@ -408,9 +401,10 @@ def main():
         key="movie_select"
     )
     
-    num_recs = st.sidebar.slider("Number of recommendations", 3, 20, 6, key="num_recs")
+    # Number of recommendations slider - moved to main area
+    num_recs = st.slider("Number of recommendations", 3, 20, 6, key="num_recs")
 
-    # Find similar movies
+    # Find similar movies button
     if st.button("🔍 FIND SIMILAR MOVIES", key="find_button"):
         st.session_state.show_recommendations = True
         st.session_state.selected_movie = selected
@@ -420,59 +414,59 @@ def main():
             idx = movies[movies['title'] == st.session_state.selected_movie].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
             
-            # Display header with properly escaped HTML
-            watched_title = html.escape(movies.iloc[idx]["display_title"])
+            # Fix HTML entities in the title
+            watched_title = html.unescape(movies.iloc[idx]["display_title"])
             st.markdown(
-                f'<h3 style="color:white; margin:20px 0 30px; position:relative;">'
+                f'<h3 style="color:white; margin:20px 0 30px;">'
                 f'Because you watched: <span style="color:#e50914">{watched_title}</span>'
-                f'<div style="position:absolute; bottom:-10px; left:0; width:60px; height:3px; background:#e50914;"></div>'
                 f'</h3>',
                 unsafe_allow_html=True
             )
             
             # Horizontal scrolling container
-            st.markdown('<div class="movie-scroller">', unsafe_allow_html=True)
+            st.markdown('<div class="movie-scroll-container">', unsafe_allow_html=True)
             
             for idx, score in sim_scores:
                 movie = movies.iloc[idx]
                 media = get_movie_media(movie)
-                title = html.escape(movie['display_title'])
-                genres = html.escape(', '.join(movie['genres'].split()[:2]))
-                year = html.escape(str(movie['year'])) if pd.notna(movie['year']) else "N/A"
                 
-                # Build trailer button if available
+                # Fix HTML entities in movie details
+                title = html.unescape(movie['display_title'])
+                genres = html.unescape(', '.join(movie['genres'].split()[:2]))
+                year = html.unescape(str(movie['year'])) if pd.notna(movie['year']) else "N/A"
+                
+                # Trailer button
                 trailer_btn = ""
                 if media.get('trailer'):
-                    trailer_url = html.escape(media['trailer']['url'])
-                    trailer_btn = f"""
+                    trailer_url = media['trailer']['url']
+                    trailer_btn = f'''
                     <a href="{trailer_url}" target="_blank"
                        style="display:inline-block; background:#e50914; color:white;
                        padding:8px 16px; border-radius:4px; font-size:13px;
-                       text-decoration:none; font-weight:500; margin-top:8px;">
+                       text-decoration:none !important; font-weight:500;">
                         ▶ Play Trailer
                     </a>
-                    """
+                    '''
                 
                 # Movie card
-                st.markdown(f"""
-                <div class="movie-card">
-                    <div style="background:#2a2a40; border-radius:8px; overflow:hidden; box-shadow:0 8px 16px rgba(0,0,0,0.2);">
-                        <img src="{html.escape(media.get('poster', DEFAULT_THUMBNAIL))}" 
+                st.markdown(f'''
+                <div style="min-width:220px; flex-shrink:0;">
+                    <div style="background:#2a2a40; border-radius:8px; overflow:hidden; box-shadow:0 4px 8px rgba(0,0,0,0.2);">
+                        <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" 
                              style="width:100%; height:330px; object-fit:cover;"
                              onerror="this.src='{DEFAULT_THUMBNAIL}'">
                         <div style="padding:15px; background:rgba(0,0,0,0.8);">
-                            <div style="font-weight:600; color:white; white-space:nowrap; 
-                                      overflow:hidden; text-overflow:ellipsis; font-size:16px;">
+                            <div class="movie-title" style="font-weight:600; color:white; margin-bottom:8px;">
                                 {title}
                             </div>
-                            <div style="font-size:13px; color:#e0e0e0; margin:8px 0 12px;">
+                            <div style="font-size:13px; color:#e0e0e0; margin-bottom:12px;">
                                 {year} • {genres}
                             </div>
                             {trailer_btn}
                         </div>
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
+                ''', unsafe_allow_html=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
