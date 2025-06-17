@@ -310,51 +310,79 @@ def movie_card(movie):
     return card_html
 
 def main():
-    st.set_page_config(layout="centered", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
+    st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
     
-    # Custom CSS with ALL fixes
+    # Custom CSS with all fixes
     st.markdown("""
     <style>
-        /* 1. PROPER HORIZONTAL SCROLLING */
-        .movie-row {
-            display: flex;
-            overflow-x: auto;
-            gap: 20px;
-            padding: 20px 0;
-            width: 100%;
+        /* 1. DROPDOWN FIX - Always opens downward */
+        div[data-baseweb="select"] > div {
+            z-index: 1;
+            position: relative;
         }
-        .movie-row::-webkit-scrollbar {
-            height: 8px;
-        }
-        .movie-row::-webkit-scrollbar-thumb {
-            background: #e50914;
-            border-radius: 4px;
+        div[data-baseweb="popover"] {
+            z-index: 1001 !important;
+            position: absolute !important;
+            top: 100% !important;
+            bottom: auto !important;
+            left: 0 !important;
+            width: 100% !important;
         }
 
-        /* 2. FIX TRAILER BUTTON RENDERING */
-        .trailer-btn {
-            display: inline-block;
+        /* 2. HORIZONTAL SCROLL CONTAINER */
+        .movie-row-container {
+            width: 100%;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding: 20px 0;
+            scrollbar-width: thin;
+        }
+        .movie-row-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        .movie-row-container::-webkit-scrollbar-thumb {
             background: #e50914;
-            color: white !important;
-            padding: 8px 16px;
             border-radius: 4px;
-            font-size: 13px;
-            text-decoration: none !important;
-            font-weight: 500;
         }
 
         /* 3. MOVIE CARD STYLING */
         .movie-card {
-            min-width: 200px;
-            flex-shrink: 0;
+            display: inline-block;
+            width: 200px;
+            margin-right: 20px;
+            vertical-align: top;
         }
 
-        /* 4. CENTERED LAYOUT */
-        .stApp {
-            max-width: 1000px;
-            padding: 2rem;
+        /* 4. TRAILER BUTTON FIX */
+        .trailer-btn {
+            display: inline-block;
+            background: #e50914;
+            color: white !important;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            text-decoration: none !important;
+            border: none !important;
+        }
+
+        /* 5. GENERAL STYLING */
+        .header {
+            background: #141414;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        body {
+            background-color: #141414;
+        }
+        .section-title {
+            color: white;
+            font-size: 1.3rem;
+            margin: 10px 0;
         }
     </style>
+    <div class="header">
+        <h1 style='color:#e50914;text-align:center;margin:0;'>🎬 Movie Recommendation Engine</h1>
+    </div>
     """, unsafe_allow_html=True)
 
     # Initialize session state
@@ -362,22 +390,6 @@ def main():
         st.session_state.show_recommendations = False
     if 'selected_movie' not in st.session_state:
         st.session_state.selected_movie = ""
-
-    # Header
-    st.markdown("""
-    <div style="
-        background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-        padding: 2rem;
-        margin-bottom: 2rem;
-        border-radius: 0 0 20px 20px;
-        text-align: center;
-    ">
-        <h1 style="color:white; margin:0;">🎬 Nupoor Mhadgut's Movie Recommendation Engine</h1>
-        <p style="color:rgba(255,255,255,0.8); margin:0.5rem 0 0;">
-            Discover your next favorite movie
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
 
     movies = load_data()
     if movies is None:
@@ -407,17 +419,15 @@ def main():
             idx = movies[movies['title'] == st.session_state.selected_movie].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
             
-            # Fix HTML entities
+            # Display header with properly escaped HTML
             watched_title = html.unescape(movies.iloc[idx]["display_title"])
             st.markdown(
-                f'<h3 style="color:white; margin:20px 0 30px;">'
-                f'Because you watched: <span style="color:#e50914">{watched_title}</span>'
-                f'</h3>',
+                f'<div class="section-title">Because you watched: {watched_title}</div>',
                 unsafe_allow_html=True
             )
             
-            # Horizontal scrolling container
-            st.markdown('<div class="movie-row">', unsafe_allow_html=True)
+            # Create horizontal scrolling container
+            row_html = '<div class="movie-row-container">'
             
             for idx, score in sim_scores:
                 movie = movies.iloc[idx]
@@ -428,7 +438,7 @@ def main():
                 genres = html.unescape(', '.join(movie['genres'].split()[:2]))
                 year = html.unescape(str(movie['year'])) if pd.notna(movie['year']) else "N/A"
                 
-                # PROPERLY RENDERED TRAILER BUTTON
+                # Trailer button (only if available)
                 trailer_html = ""
                 if media.get('trailer'):
                     trailer_url = media['trailer']['url']
@@ -439,26 +449,27 @@ def main():
                     '''
                 
                 # Movie card
-                st.markdown(f'''
+                row_html += f'''
                 <div class="movie-card">
-                    <div style="background:#2a2a40; border-radius:8px; overflow:hidden; box-shadow:0 4px 8px rgba(0,0,0,0.2);">
-                        <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" 
-                             style="width:100%; height:300px; object-fit:cover;"
-                             onerror="this.src='{DEFAULT_THUMBNAIL}'">
-                        <div style="padding:15px; background:rgba(0,0,0,0.8);">
-                            <div style="font-weight:600; color:white; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                {title}
-                            </div>
-                            <div style="font-size:13px; color:#e0e0e0; margin:8px 0 12px;">
-                                {year} • {genres}
-                            </div>
-                            {trailer_html}
+                    <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" 
+                         style="width:100%; height:300px; object-fit:cover; border-radius:4px;"
+                         onerror="this.src='{DEFAULT_THUMBNAIL}'">
+                    <div style="padding:10px 0; color:white;">
+                        <div style="font-weight:bold; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            {title}
                         </div>
+                        <div style="font-size:12px; color:#d2d2d2; margin:5px 0;">
+                            {year} • {genres}
+                        </div>
+                        {trailer_html}
                     </div>
                 </div>
-                ''', unsafe_allow_html=True)
+                '''
             
-            st.markdown('</div>', unsafe_allow_html=True)
+            row_html += '</div>'
+            
+            # Render the horizontal scrolling row
+            st.components.v1.html(row_html, height=400)
 
 if __name__ == "__main__":
     main()
