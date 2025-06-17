@@ -245,222 +245,127 @@ def movie_card(movie):
     card_html = f"""
     <div style="
         display: inline-block;
-        width: 220px;
-        margin-right: 25px;
-        margin-bottom: 30px;
+        width: 200px;
+        margin-right: 20px;
         vertical-align: top;
     ">
+        <img src="{poster_url}" 
+             style="
+                width: 100%;
+                height: 300px;
+                object-fit: cover;
+                border-radius: 4px;
+             "
+             onerror="this.src='{DEFAULT_THUMBNAIL}'"
+        >
         <div style="
-            position: relative;
-            overflow: hidden;
-            border-radius: 8px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-            background: #2a2a40;
+            padding: 10px 0;
+            color: white;
         ">
-            <img src="{poster_url}" 
-                 style="
-                    width: 100%;
-                    height: 330px;
-                    object-fit: cover;
-                    display: block;
-                 "
-                 onerror="this.src='{DEFAULT_THUMBNAIL}'"
-            >
             <div style="
-                padding: 15px;
-                background: rgba(0,0,0,0.8);
+                font-weight: bold;
+                font-size: 14px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             ">
-                <div style="
-                    font-weight: 600;
-                    font-size: 16px;
-                    margin-bottom: 8px;
-                    color: white;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                ">
-                    {safe_title}
-                </div>
-                <div style="
-                    font-size: 13px;
-                    color: #e0e0e0;
-                    margin-bottom: 12px;
-                ">
-                    {safe_year} • {safe_genres}
-                </div>
-                {f'''
-                <a href="{trailer['url']}" target="_blank"
-                   style="
-                        display: inline-block;
-                        background: #e50914;
-                        color: white;
-                        padding: 8px 16px;
-                        border-radius: 4px;
-                        font-size: 13px;
-                        text-decoration: none !important;
-                        font-weight: 500;
-                   ">
-                    ▶ Play Trailer
-                </a>
-                ''' if trailer else ''}
+                {safe_title}
             </div>
+            <div style="
+                font-size: 12px;
+                color: #d2d2d2;
+                margin: 5px 0;
+            ">
+                {safe_year} • {safe_genres}
+            </div>
+            {f'''
+            <a href="{trailer['url']}" target="_blank"
+               style="
+                    display: inline-block;
+                    background: #e50914;
+                    color: white;
+                    padding: 5px 10px;
+                    border-radius: 3px;
+                    font-size: 12px;
+                    text-decoration: none !important;
+                    border: none !important;
+                    outline: none !important;
+                    box-shadow: none !important;
+                    -webkit-tap-highlight-color: transparent;
+                    "
+                      onfocus='this.blur();'
+                      onmousedown='return false;'
+                      onmouseup='return true;'
+               ">
+                ▶ Play
+            </a>
+            ''' if trailer else ''}
         </div>
     </div>
     """
     return card_html
 
-
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
     
-    # Custom CSS with all fixes
     st.markdown("""
     <style>
-        /* Centered Dropdown */
-        div[data-baseweb="select"] {
-            margin: 0 auto;
-            max-width: 500px;
+        body {
+            background-color: #141414;
+            color: white;
         }
-        /* Horizontal Movie Row */
-        .movie-row {
+        .header {
+            text-align: center;
+            padding: 1rem;
+            background: #141414;
+        }
+        .movie-row-container {
             display: flex;
             overflow-x: auto;
-            gap: 20px; /* Space between movie cards */
             padding: 20px 0;
-            width: 100%;
-            align-items: flex-start; /* Align items to the top */
-        }
-        .movie-row::-webkit-scrollbar {
-            height: 8px;
-        }
-        .movie-row::-webkit-scrollbar-thumb {
-            background: #e50914;
-            border-radius: 4px;
-        }
-        /* Movie Card Styling */
-        .movie-card {
-            min-width: 220px; /* Adjusted width for better fit */
-            flex-shrink: 0;
-            background: #2a2a40; /* Background color for cards */
-            border-radius: 8px; /* Rounded corners */
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2); /* Shadow effect */
-            overflow: hidden; /* Hide overflow */
-        }
-        .movie-poster {
-            width: 100%;
-            height: 330px; /* Fixed height for uniformity */
-            object-fit: cover;
-            border-radius: 8px 8px 0 0; /* Rounded top corners */
-        }
-        .movie-info {
-            padding: 15px;
-            background: rgba(0,0,0,0.8); /* Dark background for text */
-        }
-        .movie-title {
-            font-weight: 600;
-            font-size: 16px;
-            margin-bottom: 8px;
-            color: white;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
-        .movie-details {
-            font-size: 13px;
-            color: #e0e0e0;
-            margin-bottom: 12px;
-        }
-        .trailer-button {
-            display: inline-block;
-            background: #e50914;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-size: 13px;
-            text-decoration: none !important;
-            font-weight: 500;
+        .section-title {
+            font-size: 1.3rem;
+            margin: 10px 0;
         }
     </style>
-    """, unsafe_allow_html=True)
-
-    # Initialize session state
-    if 'show_recommendations' not in st.session_state:
-        st.session_state.show_recommendations = False
-    if 'selected_movie' not in st.session_state:
-        st.session_state.selected_movie = ""
-
-    # Header
-    st.markdown("""
-    <div style="text-align:center; padding:2rem 0;">
-        <h1 style="color:#e50914;">🎬 Movie Recommendation Engine</h1>
+    <div class="header">
+        <h1 style='color:#e50914;margin:0;'>Movie Recommendation Engine</h1>
     </div>
     """, unsafe_allow_html=True)
-
+    
     movies = load_data()
-    if movies is None:
+    if movies is None: 
         st.stop()
     
     cosine_sim = prepare_model(movies)
-
-    # Centered movie selection
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        st.markdown("🎞️ SELECT A MOVIE YOU LIKE:")
-        selected = st.selectbox(
-            "Select a movie:",
-            movies['title'].sort_values(),
-            index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0,
-            key="movie_select"
-        )
     
-    # Number of recommendations in sidebar
+    # Movie selection in main page
+    selected = st.selectbox(
+        "🎞️ Select a movie you like:",
+        movies['title'].sort_values(),
+        index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0
+    )
+    
     with st.sidebar:
+        st.markdown("### Controls")
         num_recs = st.slider("Number of recommendations", 3, 20, 6)
-
-    # Find similar movies button (centered)
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        if st.button("🔍 FIND SIMILAR MOVIES", use_container_width=True):
-            st.session_state.show_recommendations = True
-            st.session_state.selected_movie = selected
-
-    if st.session_state.show_recommendations and st.session_state.selected_movie:
-        with st.spinner("Finding similar movies..."):
-            idx = movies[movies['title'] == st.session_state.selected_movie].index[0]
+    
+    if st.button("🔍 Find Similar Movies"):
+        with st.spinner("Finding recommendations..."):
+            idx = movies[movies['title'] == selected].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
             
-            st.markdown(
-                f'<h3 style="color:white; text-align:center; margin:20px 0 30px;">'
-                f'Because you watched: <span style="color:#e50914">{html.unescape(movies.iloc[idx]["display_title"])}</span>'
-                f'</h3>',
-                unsafe_allow_html=True
-            )
+            st.markdown(f'<div class="section-title">Because you watched: {movies.iloc[idx]["display_title"]}</div>', unsafe_allow_html=True)
             
-            # Horizontal movie row
-            st.markdown('<div class="movie-row">', unsafe_allow_html=True)
-            
+            # Create horizontal scrolling row
+            row_html = '<div class="movie-row-container">'
             for idx, score in sim_scores:
-                movie = movies.iloc[idx]
-                media = get_movie_media(movie)
-                
-                st.markdown(f"""
-                <div class="movie-card">
-                    <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" class="movie-poster"
-                         onerror="this.src='{DEFAULT_THUMBNAIL}'">
-                    <div class="movie-info">
-                        <div class="movie-title">
-                            {html.unescape(movie['display_title'])}
-                        </div>
-                        <div class="movie-details">
-                            {movie['year']} • {', '.join(movie['genres'].split()[:2])}
-                        </div>
-                        {f'<a href="{media["trailer"]["url"]}" target="_blank" class="trailer-button">▶ Trailer</a>' if media.get('trailer') else ''}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                row_html += movie_card(movies.iloc[idx])
+            row_html += '</div>'
             
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(row_html, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
-
