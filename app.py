@@ -239,27 +239,40 @@ def movie_card(movie):
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    components.html(f"""
+    return f"""
+    <div class="movie-card">
+        <img src="{poster_url}" class="movie-poster" onerror="this.src='{DEFAULT_THUMBNAIL}'">
+        <div class="movie-info">
+            <div class="movie-title">{movie['display_title']}</div>
+            <div class="movie-meta">{movie['year']} • {', '.join(movie['genres'].split()[:2])}</div>
+            {f'<a href="{trailer["url"]}" target="_blank" class="trailer-btn">▶ Play</a>' if trailer else ''}
+        </div>
+    </div>
+    """
+def main():
+    st.set_page_config(layout="wide", page_title="Movie Recommendations", page_icon="🎬")
+    
+    st.markdown("""
     <style>
-        .movie-card {{
-            width: 160px;  /* Slightly wider than Netflix */
-            margin: 0 15px 25px 0;
+        .movie-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .movie-card {
+            width: 100%;
             position: relative;
             transition: all 0.3s ease;
-            display: inline-block;
-        }}
-        .movie-card:hover {{
-            transform: scale(1.1);
-            z-index: 10;
-        }}
-        .movie-poster {{
+        }
+        .movie-poster {
             width: 100%;
-            height: 240px;  /* Standard streaming service aspect ratio */
+            height: 240px;
             object-fit: cover;
             border-radius: 4px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }}
-        .movie-info {{
+        }
+        .movie-info {
             opacity: 0;
             position: absolute;
             bottom: 0;
@@ -270,24 +283,24 @@ def movie_card(movie):
             padding: 15px 10px 10px;
             border-radius: 0 0 4px 4px;
             transition: opacity 0.3s ease;
-        }}
-        .movie-card:hover .movie-info {{
+        }
+        .movie-card:hover .movie-info {
             opacity: 1;
-        }}
-        .movie-title {{
+        }
+        .movie-title {
             font-weight: 600;
             font-size: 14px;
             margin-bottom: 5px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-        }}
-        .movie-meta {{
+        }
+        .movie-meta {
             font-size: 11px;
             color: #d2d2d2;
             margin-bottom: 8px;
-        }}
-        .trailer-btn {{
+        }
+        .trailer-btn {
             background: #e50914;
             color: white;
             border: none;
@@ -298,87 +311,49 @@ def movie_card(movie):
             text-align: center;
             display: block;
             text-decoration: none;
-        }}
-    </style>
-
-    <div class="movie-card">
-        <img src="{poster_url}" class="movie-poster" onerror="this.src='{DEFAULT_THUMBNAIL}'">
-        <div class="movie-info">
-            <div class="movie-title">{movie['display_title']}</div>
-            <div class="movie-meta">{movie['year']} • {', '.join(movie['genres'].split()[:2])}</div>
-            {f'<a href="{trailer["url"]}" target="_blank" class="trailer-btn">▶ Play</a>' if trailer else ''}
-        </div>
-    </div>
-    """, height=260)  # Matches the card height
-
-def main():
-    st.set_page_config(layout="wide", page_title="Movie Recommendations", page_icon="🎬")
-
-    # Load data
-    movies = load_data()
-    if movies is None:
-        st.stop()
-
-    # Prepare similarity matrix
-    cosine_sim = prepare_model(movies)
-
-    st.markdown("""
-    <style>
-        .row-container {
-            display: flex;
-            overflow-x: auto;
-            padding: 15px 20px;
-            background: #141414;
-            margin-bottom: 30px;
-            gap: 5px;
-        }
-        .row-container::-webkit-scrollbar {
-            display: none;
-        }
-        .row-title {
-            color: white;
-            font-size: 1.3rem;
-            font-weight: 500;
-            margin: 5px 0 0 20px;
-            padding-top: 10px;
         }
         body {
             background-color: #141414;
+            color: white;
+        }
+        .section-title {
+            font-size: 1.3rem;
+            margin: 20px 0 15px 0;
         }
     </style>
-    <div style="background-color: #141414; padding-bottom: 20px;">
     """, unsafe_allow_html=True)
 
-    # Sidebar controls
+    # Your existing data loading code
+    movies = load_data()
+    if movies is None: 
+        st.stop()
+    
+    cosine_sim = prepare_model(movies)
+    
     with st.sidebar:
         st.markdown("### 🎛️ Controls")
-        num_recs = st.slider("Number of recommendations", 3, 10, 5)
+        num_recs = st.slider("Number of recommendations", 3, 9, 6)  # Multiples of 3 work best
         selected = st.selectbox(
-            "🎞️ Select a movie you like:",
+            "Select a movie:",
             movies['title'].sort_values(),
             index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0
         )
-
+    
     if st.button("🔍 Find Similar Movies"):
         with st.spinner("Finding recommendations..."):
             idx = movies[movies['title'] == selected].index[0]
-            sim_scores = sorted(
-                list(enumerate(cosine_sim[idx])),
-                key=lambda x: x[1],
-                reverse=True
-            )[1:num_recs+1]
-
-            st.markdown(
-                f'<div class="row-title">Because you watched: {movies.iloc[idx]["display_title"]}</div>',
-                unsafe_allow_html=True
-            )
-            st.markdown('<div class="row-container">', unsafe_allow_html=True)
-            for sim_idx, _ in sim_scores:
-                movie_card(movies.iloc[sim_idx])
+            sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
+            
+            st.markdown(f'<div class="section-title">Similar to: {movies.iloc[idx]["display_title"]}</div>', unsafe_allow_html=True)
+            
+            # Create rows with 3 movies each
+            st.markdown('<div class="movie-row">', unsafe_allow_html=True)
+            for i, (idx, score) in enumerate(sim_scores):
+                components.html(movie_card(movies.iloc[idx]), height=300)
+                # Start new row after every 3 movies
+                if (i+1) % 3 == 0 and (i+1) != len(sim_scores):
+                    st.markdown('</div><div class="movie-row">', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)  # Close outer container
-
 
 if __name__ == "__main__":
     main()
