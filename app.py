@@ -309,26 +309,19 @@ def movie_card(movie):
     """
     return card_html
 
+
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
     
     # Custom CSS with all fixes
     st.markdown("""
     <style>
-        /* 1. CENTERED DROPDOWN */
+        /* Centered Dropdown */
         div[data-baseweb="select"] {
             margin: 0 auto;
             max-width: 500px;
         }
-        div[data-baseweb="popover"] {
-            z-index: 1001 !important;
-            top: 100% !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-            width: 500px !important;
-        }
-
-        /* 2. HORIZONTAL MOVIE ROW */
+        /* Horizontal Movie Row */
         .movie-row {
             display: flex;
             overflow-x: auto;
@@ -343,8 +336,7 @@ def main():
             background: #e50914;
             border-radius: 4px;
         }
-
-        /* 3. MOVIE CARD STYLING */
+        /* Movie Card Styling */
         .movie-card {
             min-width: 200px;
             flex-shrink: 0;
@@ -380,8 +372,9 @@ def main():
     # Centered movie selection
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
+        st.markdown("🎞️ SELECT A MOVIE YOU LIKE:")
         selected = st.selectbox(
-            "🎞️ SELECT A MOVIE YOU LIKE:",
+            "Select a movie:",
             movies['title'].sort_values(),
             index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0,
             key="movie_select"
