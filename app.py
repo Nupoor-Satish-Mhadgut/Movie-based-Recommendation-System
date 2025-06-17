@@ -241,9 +241,10 @@ def movie_card(movie):
 
     card_html = f"""
     <div style="
+        display: inline-block;
         width: 200px;
         margin-right: 20px;
-        flex-shrink: 0;
+        vertical-align: top;
     ">
         <img src="{poster_url}" 
              style="
@@ -294,7 +295,7 @@ def movie_card(movie):
     return card_html
 
 def main():
-    st.set_page_config(layout="wide", page_title="Movie Recommendations", page_icon="🎬")
+    st.set_page_config(layout="wide", page_title="Nupoor Mhadgut's Movie Recommendations", page_icon="🎬")
     
     st.markdown("""
     <style>
@@ -309,21 +310,15 @@ def main():
             white-space: nowrap;
             padding: 20px 0;
         }
-        .movie-row {
-            display: inline-block;
-        }
-        .movie-row::-webkit-scrollbar {
-            display: none;
+        body {
+            background-color: #141414;
+            margin: 0;
+            padding: 0;
         }
         .section-title {
             color: white;
             font-size: 1.3rem;
             margin: 10px 0;
-        }
-        body {
-            background-color: #141414;
-            margin: 0;
-            padding: 0;
         }
     </style>
     <div class="header">
@@ -355,11 +350,13 @@ def main():
             
             st.markdown(f'<div class="section-title">Because you watched: {movies.iloc[idx]["display_title"]}</div>', unsafe_allow_html=True)
             
-            # Horizontal scrolling row
-            st.markdown('<div class="movie-row-container"><div class="movie-row">', unsafe_allow_html=True)
+            # Create horizontal scrolling row
+            row_html = '<div class="movie-row-container">'
             for idx, score in sim_scores:
-                st.components.v1.html(movie_card(movies.iloc[idx]), height=380)
-            st.markdown('</div></div>', unsafe_allow_html=True)
+                row_html += movie_card(movies.iloc[idx])
+            row_html += '</div>'
+            
+            st.components.v1.html(row_html, height=400)
 
 if __name__ == "__main__":
     main()
