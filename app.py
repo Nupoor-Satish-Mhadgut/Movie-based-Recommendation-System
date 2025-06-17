@@ -238,39 +238,46 @@ def main():
     # Custom CSS with all fixes
     st.markdown("""
     <style>
-        /* 1. Force horizontal scrolling */
-        .movie-scroll-container {
+        /* 1. Perfect horizontal scrolling */
+        .movie-row {
             display: flex;
             flex-direction: row;
+            flex-wrap: nowrap;
             overflow-x: auto;
             gap: 25px;
             padding: 20px 0;
             width: 100%;
         }
+        .movie-row::-webkit-scrollbar {
+            height: 8px;
+        }
+        .movie-row::-webkit-scrollbar-thumb {
+            background: #e50914;
+            border-radius: 4px;
+        }
         
-        /* 2. Hide Streamlit's button styling */
-        .stMarkdown > div > div > button {
-            all: unset !important;
+        /* 2. Movie card styling */
+        .movie-card {
+            min-width: 220px;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+        .movie-card:hover {
+            transform: scale(1.03);
         }
         
         /* 3. Trailer button styling */
         .trailer-btn {
             display: inline-block;
             background: #e50914;
-            color: white;
+            color: white !important;
             padding: 8px 16px;
             border-radius: 4px;
             font-size: 13px;
-            text-decoration: none;
-            cursor: pointer;
+            text-decoration: none !important;
             border: none;
-            outline: none;
-        }
-        
-        /* 4. Movie card styling */
-        .movie-card {
-            min-width: 220px;
-            flex-shrink: 0;
+            cursor: pointer;
+            margin-top: 10px;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -323,46 +330,37 @@ def main():
                 unsafe_allow_html=True
             )
             
-            # Create horizontal container
-            container = st.container()
+            # Create horizontal scrolling container
+            st.markdown('<div class="movie-row">', unsafe_allow_html=True)
             
-            # Create columns for horizontal layout
-            cols = st.columns(1)
-            with cols[0]:
-                # Horizontal scrolling content
-                st.markdown('<div class="movie-scroll-container">', unsafe_allow_html=True)
+            for idx, score in sim_scores:
+                movie = movies.iloc[idx]
+                media = get_movie_media(movie)
                 
-                for idx, score in sim_scores:
-                    movie = movies.iloc[idx]
-                    media = get_movie_media(movie)
-                    
-                    # Use Streamlit's native button to avoid HTML snippets
-                    col1, col2 = st.columns([1, 4])
-                    with col1:
-                        st.image(media.get('poster', DEFAULT_THUMBNAIL), width=220)
-                    with col2:
-                        st.markdown(f"""
-                        <div style="margin-left:10px;">
-                            <div style="font-weight:600; color:white; font-size:16px;">
-                                {html.unescape(movie['display_title'])}
-                            </div>
-                            <div style="color:#aaa; font-size:14px; margin:5px 0 10px 0;">
-                                {movie['year']} • {', '.join(movie['genres'].split()[:2])}
-                            </div>
+                # Use st.markdown with unsafe_allow_html instead of components.html
+                st.markdown(f"""
+                <div class="movie-card">
+                    <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" 
+                         style="width:100%; height:300px; object-fit:cover; border-radius:8px;"
+                         onerror="this.src='{DEFAULT_THUMBNAIL}'">
+                    <div style="padding:15px;">
+                        <div style="font-weight:600; color:white; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            {html.unescape(movie['display_title'])}
                         </div>
-                        """, unsafe_allow_html=True)
-                        
-                        if media.get('trailer'):
-                            if st.button(
-                                "▶ Watch Trailer",
-                                key=f"trailer_{idx}",
-                                help=f"Watch trailer for {movie['display_title']}",
-                                on_click=lambda u=media['trailer']['url']: st.experimental_set_query_params(trailer=u),
-                                type="primary"
-                            ):
-                                st.experimental_set_query_params(trailer=media['trailer']['url'])
-                
-                st.markdown('</div>', unsafe_allow_html=True)
+                        <div style="font-size:13px; color:#aaa; margin:8px 0 12px;">
+                            {movie['year']} • {', '.join(movie['genres'].split()[:2])}
+                        </div>
+                        <a href="{media['trailer']['url'] if media.get('trailer') else '#'}" 
+                           target="_blank" 
+                           class="trailer-btn"
+                           style="{'display:none;' if not media.get('trailer') else ''}">
+                            ▶ Watch Trailer
+                        </a>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
