@@ -232,52 +232,44 @@ def get_movie_media(movie):
         'trailer': get_best_trailer(movie['title'], movie.get('year'))
     }
 
+# ... (keep all the imports and previous functions exactly the same until main())
+
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
     
     # Custom CSS with all fixes
     st.markdown("""
     <style>
-        /* 1. Perfect horizontal scrolling */
-        .movie-row {
-            display: flex;
-            flex-direction: row;
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            gap: 25px;
-            padding: 20px 0;
+        /* ... (keep all your existing CSS styles the same) ... */
+        
+        /* Add modal styles */
+        .trailer-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        .movie-row::-webkit-scrollbar {
-            height: 8px;
+        .trailer-modal-content {
+            position: relative;
+            width: 80%;
+            max-width: 800px;
         }
-        .movie-row::-webkit-scrollbar-thumb {
+        .trailer-close-btn {
+            position: absolute;
+            top: -40px;
+            right: 0;
             background: #e50914;
-            border-radius: 4px;
-        }
-        
-        /* 2. Movie card styling */
-        .movie-card {
-            min-width: 220px;
-            flex-shrink: 0;
-            transition: transform 0.2s;
-        }
-        .movie-card:hover {
-            transform: scale(1.03);
-        }
-        
-        /* 3. Trailer button styling */
-        .trailer-btn {
-            display: inline-block;
-            background: #e50914;
-            color: white !important;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-size: 13px;
-            text-decoration: none !important;
+            color: white;
             border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
             cursor: pointer;
-            margin-top: 10px;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -313,6 +305,31 @@ def main():
     with st.sidebar:
         num_recs = st.slider("Number of recommendations", 3, 20, 6)
 
+    # Initialize query params
+    query_params = st.query_params
+
+    # Handle trailer clicks from URL params
+    if "trailer" in query_params and query_params["trailer"] != '#':
+        trailer_url = query_params["trailer"]
+        # Convert YouTube watch URL to embed URL if needed
+        embed_url = trailer_url.replace('youtu.be/', 'youtube.com/embed/') \
+                              .replace('watch?v=', 'embed/') \
+                              .replace('http://', 'https://')
+        
+        st.markdown(f"""
+        <div class="trailer-modal">
+            <div class="trailer-modal-content">
+                <button onclick="window.history.back();" 
+                        class="trailer-close-btn">
+                    Close
+                </button>
+                <iframe width="100%" height="450" src="{embed_url}" 
+                        frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen></iframe>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
     # Find similar movies button
     if st.button("🔍 FIND SIMILAR MOVIES"):
         st.session_state.show_recommendations = True
@@ -337,7 +354,13 @@ def main():
                 movie = movies.iloc[idx]
                 media = get_movie_media(movie)
                 
-                # Use st.markdown with unsafe_allow_html instead of components.html
+                # Generate the correct query params URL
+                trailer_link = st.query_params.to_dict()
+                if media.get('trailer'):
+                    trailer_link['trailer'] = media['trailer']['url']
+                else:
+                    trailer_link['trailer'] = '#'
+                
                 st.markdown(f"""
                 <div class="movie-card">
                     <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" 
@@ -350,8 +373,7 @@ def main():
                         <div style="font-size:13px; color:#aaa; margin:8px 0 12px;">
                             {movie['year']} • {', '.join(movie['genres'].split()[:2])}
                         </div>
-                        <a href="{media['trailer']['url'] if media.get('trailer') else '#'}" 
-                           target="_blank" 
+                        <a href="{st.experimental_get_query_params().replace(trailer=media['trailer']['url'] if media.get('trailer') else '#')}" 
                            class="trailer-btn"
                            style="{'display:none;' if not media.get('trailer') else ''}">
                             ▶ Watch Trailer
