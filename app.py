@@ -240,36 +240,31 @@ def main():
     <style>
         /* 1. Force horizontal scrolling */
         .movie-scroll-container {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
+            display: flex;
+            flex-direction: row;
+            overflow-x: auto;
             gap: 25px;
             padding: 20px 0;
             width: 100%;
         }
         
-        /* 2. Fix dropdown direction */
-        div[data-baseweb="select"] > div {
-            position: relative;
-            z-index: 1;
-        }
-        div[data-baseweb="popover"] {
-            top: 100% !important;
-            bottom: auto !important;
+        /* 2. Hide Streamlit's button styling */
+        .stMarkdown > div > div > button {
+            all: unset !important;
         }
         
-        /* 3. Fix trailer button rendering */
+        /* 3. Trailer button styling */
         .trailer-btn {
-            all: unset; /* Remove all default styles */
             display: inline-block;
             background: #e50914;
-            color: white !important;
+            color: white;
             padding: 8px 16px;
             border-radius: 4px;
             font-size: 13px;
-            text-decoration: none !important;
+            text-decoration: none;
             cursor: pointer;
+            border: none;
+            outline: none;
         }
         
         /* 4. Movie card styling */
@@ -328,42 +323,46 @@ def main():
                 unsafe_allow_html=True
             )
             
-            # Horizontal scrolling container
-            st.markdown('<div class="movie-scroll-container">', unsafe_allow_html=True)
+            # Create horizontal container
+            container = st.container()
             
-            for idx, score in sim_scores:
-                movie = movies.iloc[idx]
-                media = get_movie_media(movie)
+            # Create columns for horizontal layout
+            cols = st.columns(1)
+            with cols[0]:
+                # Horizontal scrolling content
+                st.markdown('<div class="movie-scroll-container">', unsafe_allow_html=True)
                 
-                # Proper trailer button without code snippets
-                trailer_html = ""
-                if media.get('trailer'):
-                    trailer_url = media['trailer']['url']
-                    trailer_html = f'''
-                    <button class="trailer-btn" onclick="window.open('{trailer_url}', '_blank')">
-                        ▶ Watch Trailer
-                    </button>
-                    '''
+                for idx, score in sim_scores:
+                    movie = movies.iloc[idx]
+                    media = get_movie_media(movie)
+                    
+                    # Use Streamlit's native button to avoid HTML snippets
+                    col1, col2 = st.columns([1, 4])
+                    with col1:
+                        st.image(media.get('poster', DEFAULT_THUMBNAIL), width=220)
+                    with col2:
+                        st.markdown(f"""
+                        <div style="margin-left:10px;">
+                            <div style="font-weight:600; color:white; font-size:16px;">
+                                {html.unescape(movie['display_title'])}
+                            </div>
+                            <div style="color:#aaa; font-size:14px; margin:5px 0 10px 0;">
+                                {movie['year']} • {', '.join(movie['genres'].split()[:2])}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        if media.get('trailer'):
+                            if st.button(
+                                "▶ Watch Trailer",
+                                key=f"trailer_{idx}",
+                                help=f"Watch trailer for {movie['display_title']}",
+                                on_click=lambda u=media['trailer']['url']: st.experimental_set_query_params(trailer=u),
+                                type="primary"
+                            ):
+                                st.experimental_set_query_params(trailer=media['trailer']['url'])
                 
-                # Movie card
-                st.markdown(f'''
-                <div class="movie-card">
-                    <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" 
-                         style="width:100%; height:300px; object-fit:cover; border-radius:8px;"
-                         onerror="this.src='{DEFAULT_THUMBNAIL}'">
-                    <div style="padding:15px;">
-                        <div style="font-weight:600; color:white; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                            {html.unescape(movie['display_title'])}
-                        </div>
-                        <div style="font-size:13px; color:#aaa; margin:8px 0 12px;">
-                            {movie['year']} • {', '.join(movie['genres'].split()[:2])}
-                        </div>
-                        {trailer_html}
-                    </div>
-                </div>
-                ''', unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)  # Close container
-            
+                st.markdown('</div>', unsafe_allow_html=True)
+
 if __name__ == "__main__":
     main()
