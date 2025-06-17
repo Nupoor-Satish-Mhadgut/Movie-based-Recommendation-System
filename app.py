@@ -312,105 +312,133 @@ def movie_card(movie):
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
     
+    # Custom CSS with all fixes
     st.markdown("""
     <style>
-        /* Fixed dropdown behavior */
+        /* 1. DROPDOWN FIX - Forces dropdown to always appear below */
         div[data-baseweb="select"] > div {
-            z-index: 999;
+            z-index: 1;
+            position: relative;
         }
         
         div[data-baseweb="popover"] {
-            z-index: 1000;
+            z-index: 1001 !important;
             position: absolute !important;
             top: 100% !important;
             bottom: auto !important;
+            left: 0 !important;
+            width: 100% !important;
+            max-height: 300px;
+            overflow-y: auto;
         }
         
-        /* Movie row styling */
-        .movie-row {
-            display: flex;
+        /* 2. MOVIE ROW LAYOUT */
+        .movie-row-container {
+            width: 100%;
             overflow-x: auto;
-            padding: 20px 0;
+            padding: 10px 0 30px 0;
+        }
+        
+        .movie-row {
+            display: inline-flex;
             gap: 25px;
-            scrollbar-width: thin;
         }
         
-        /* Remove extra padding */
-        .stApp {
+        /* 3. REMOVE BLANK SPACE */
+        .stApp > div:first-child {
             padding-top: 1rem;
-            padding-bottom: 1rem;
         }
         
-        /* Button styling */
-        .stButton>button {
-            transition: all 0.3s ease;
-        }
-        
-        .stButton>button:active {
-            transform: scale(0.98);
+        /* 4. MOVIE CARD STYLING */
+        .movie-card {
+            width: 220px;
+            flex-shrink: 0;
         }
     </style>
     """, unsafe_allow_html=True)
 
-    # Header Section
+    # Initialize session state
+    if 'show_recommendations' not in st.session_state:
+        st.session_state.show_recommendations = False
+    if 'selected_movie' not in st.session_state:
+        st.session_state.selected_movie = ""
+
+    # Header
     st.markdown("""
-    <div class="header">
-        <h1 style="
-            text-align:center;
-            margin:0;
-            color:white;
-            font-size:2.5rem;
-            font-weight:700;
-            letter-spacing:1px;
-        ">
-            🎬 Nupoor Mhadgut's Movie Recommendation Engine
-        </h1>
-        <p style="
-            text-align:center;
-            color:rgba(255,255,255,0.8);
-            margin:0.5rem 0 0;
-            font-size:1.1rem;
-        ">
-            Discover your next favorite movie with AI-powered recommendations
+    <div style="
+        background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border-radius: 0 0 20px 20px;
+        text-align: center;
+    ">
+        <h1 style="color:white; margin:0;">🎬 Nupoor Mhadgut's Movie Recommendation Engine</h1>
+        <p style="color:rgba(255,255,255,0.8); margin:0.5rem 0 0;">
+            Discover your next favorite movie
         </p>
     </div>
     """, unsafe_allow_html=True)
 
     movies = load_data()
-    if movies is None: 
+    if movies is None:
         st.stop()
     
     cosine_sim = prepare_model(movies)
+
+    # Movie selection
+    selected = st.selectbox(
+        "🎞️ SELECT A MOVIE YOU LIKE:",
+        movies['title'].sort_values(),
+        index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0,
+        key="movie_select"
+    )
     
-    with st.container():
-        selected = st.selectbox(
-            "🎞️ SELECT A MOVIE YOU LIKE:",
-            movies['title'].sort_values(),
-            index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0,
-            key="movie_select"
-        )
-    
-    with st.sidebar:
-        num_recs = st.slider("Number of recommendations", 3, 20, 6)
-    
-    if st.button("🔍 FIND SIMILAR MOVIES", key="find_movies"):
-        st.session_state.button_clicked = True
-    
-    if st.session_state.button_clicked:
-        with st.spinner("Analyzing preferences..."):
-            idx = movies[movies['title'] == selected].index[0]
+    num_recs = st.sidebar.slider("Number of recommendations", 3, 20, 6, key="num_recs")
+
+    # Find similar movies
+    if st.button("🔍 FIND SIMILAR MOVIES", key="find_button"):
+        st.session_state.show_recommendations = True
+        st.session_state.selected_movie = selected
+
+    if st.session_state.show_recommendations and st.session_state.selected_movie:
+        with st.spinner("Finding similar movies..."):
+            idx = movies[movies['title'] == st.session_state.selected_movie].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
             
-            st.markdown(f'<div class="section-title">Because you watched: <span style="color:#e50914">{html.escape(movies.iloc[idx]["display_title"])}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<h3 style="color:white; margin:20px 0 30px;">Because you watched: <span style="color:#e50914">{html.escape(movies.iloc[idx]["display_title"])}</span></h3>', unsafe_allow_html=True)
             
-            # Create horizontal movie row
-            cols = st.columns(1)
-            with cols[0]:
-                row_html = '<div class="movie-row">'
-                for idx, score in sim_scores:
-                    row_html += movie_card(movies.iloc[idx])
-                row_html += '</div>'
-                st.markdown(row_html, unsafe_allow_html=True)
+            # Create horizontal scrolling movie row
+            st.markdown('<div class="movie-row-container"><div class="movie-row">', unsafe_allow_html=True)
+            
+            for idx, score in sim_scores:
+                movie = movies.iloc[idx]
+                media = get_movie_media(movie)
+                
+                st.markdown(f"""
+                <div class="movie-card">
+                    <div style="
+                        background: #2a2a40;
+                        border-radius: 8px;
+                        overflow: hidden;
+                        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+                    ">
+                        <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" 
+                             style="width:100%; height:330px; object-fit:cover;"
+                             onerror="this.src='{DEFAULT_THUMBNAIL}'">
+                        <div style="padding:15px; background:rgba(0,0,0,0.8);">
+                            <div style="font-weight:600; color:white; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                {movie['display_title']}
+                            </div>
+                            <div style="font-size:13px; color:#e0e0e0; margin:8px 0 12px;">
+                                {movie['year']} • {', '.join(movie['genres'].split()[:2])}
+                            </div>
+                            {f'<a href="{media["trailer"]["url"]}" target="_blank" style="display:inline-block; background:#e50914; color:white; padding:8px 16px; border-radius:4px; font-size:13px; text-decoration:none;">▶ Play Trailer</a>' if media.get('trailer') else ''}
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown('</div></div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
