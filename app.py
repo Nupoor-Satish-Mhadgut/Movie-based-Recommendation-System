@@ -246,7 +246,6 @@ def movie_card(movie):
         margin-right: 25px;
         vertical-align: top;
         transition: all 0.3s ease;
-        position: relative;
     ">
         <div style="
             position: relative;
@@ -260,27 +259,27 @@ def movie_card(movie):
                     height: 330px;
                     object-fit: cover;
                     transition: transform 0.5s ease;
-                    border-radius: 8px;
+                    display: block;  /* Fix for line issues */
                  "
                  onerror="this.src='{DEFAULT_THUMBNAIL}'"
-                 class="movie-poster"
             >
             <div style="
                 position: absolute;
                 bottom: 0;
                 left: 0;
                 right: 0;
-                background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
+                background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
                 padding: 60px 15px 15px;
                 opacity: 0;
                 transition: opacity 0.3s ease;
                 border-radius: 0 0 8px 8px;
-            " class="movie-overlay">
+            ">
                 <div style="
                     font-weight: 600;
                     font-size: 16px;
                     margin-bottom: 8px;
                     color: white;
+                    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
                 ">
                     {movie['display_title']}
                 </div>
@@ -288,28 +287,28 @@ def movie_card(movie):
                     font-size: 13px;
                     color: #e0e0e0;
                     margin-bottom: 12px;
+                    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
                 ">
                     {movie['year']} • {', '.join(movie['genres'].split()[:2])}
                 </div>
                 {f'''
-                <div style="text-align: center;">
-                    <a href="{trailer['url']}" target="_blank"
-                       style="
-                            display: inline-block;
-                            background: #e50914;
-                            color: white;
-                            padding: 8px 16px;
-                            border-radius: 4px;
-                            font-size: 13px;
-                            text-decoration: none;
-                            font-weight: 500;
-                            transition: all 0.2s ease;
-                            border: none;
-                       "
-                       class="trailer-btn">
-                        ▶ Play Trailer
-                    </a>
-                </div>
+                <a href="{trailer['url']}" target="_blank"
+                   style="
+                        display: inline-block;
+                        background: #e50914;
+                        color: white;
+                        padding: 8px 16px;
+                        border-radius: 4px;
+                        font-size: 13px;
+                        text-decoration: none !important;
+                        font-weight: 500;
+                        transition: all 0.2s ease;
+                        border: none;
+                        outline: none;
+                        box-shadow: none;
+                   ">
+                    ▶ Play Trailer
+                </a>
                 ''' if trailer else ''}
             </div>
         </div>
