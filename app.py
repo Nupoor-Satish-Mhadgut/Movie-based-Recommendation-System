@@ -245,41 +245,35 @@ def movie_card(movie):
         margin-right: 25px;
         margin-bottom: 30px;
         vertical-align: top;
-        transition: all 0.3s ease;
     ">
         <div style="
             position: relative;
             overflow: hidden;
             border-radius: 8px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            background: #2a2a40;
         ">
             <img src="{poster_url}" 
                  style="
                     width: 100%;
                     height: 330px;
                     object-fit: cover;
-                    transition: transform 0.5s ease;
                     display: block;
                  "
                  onerror="this.src='{DEFAULT_THUMBNAIL}'"
             >
             <div style="
-                position: absolute;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
-                padding: 60px 15px 15px;
-                opacity: 0;
-                transition: opacity 0.3s ease;
-                border-radius: 0 0 8px 8px;
+                padding: 15px;
+                background: rgba(0,0,0,0.8);
             ">
                 <div style="
                     font-weight: 600;
                     font-size: 16px;
                     margin-bottom: 8px;
                     color: white;
-                    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
                 ">
                     {movie['display_title']}
                 </div>
@@ -287,7 +281,6 @@ def movie_card(movie):
                     font-size: 13px;
                     color: #e0e0e0;
                     margin-bottom: 12px;
-                    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
                 ">
                     {movie['year']} • {', '.join(movie['genres'].split()[:2])}
                 </div>
@@ -302,10 +295,6 @@ def movie_card(movie):
                         font-size: 13px;
                         text-decoration: none !important;
                         font-weight: 500;
-                        transition: all 0.2s ease;
-                        border: none;
-                        outline: none;
-                        box-shadow: none;
                    ">
                     ▶ Play Trailer
                 </a>
@@ -335,56 +324,25 @@ def main():
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         
-        .movie-grid-container {
+        .movie-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 25px;
             padding: 20px 0;
         }
         
-        .movie-card:hover {
-            transform: translateY(-10px) scale(1.02);
-        }
-        
-        .movie-card:hover .movie-poster {
-            transform: scale(1.05);
-        }
-        
-        .movie-card:hover .movie-overlay {
-            opacity: 1;
-        }
-        
-        .trailer-btn:hover {
-            background: #f40612 !important;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(228,9,20,0.4);
-        }
-        
-        body {
-            background: linear-gradient(to bottom, #1a1a2e 0%, #16213e 100%);
-            color: white;
-            margin: 0;
-            padding: 0;
-        }
-        
-        .section-title {
-            color: white;
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin: 20px 0 30px 0;
-            position: relative;
-            display: inline-block;
-        }
-        
-        .section-title:after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 0;
-            width: 60px;
-            height: 4px;
-            background: #e50914;
-            border-radius: 2px;
+        /* Fixed dropdown behavior */
+        .stSelectbox div[role="listbox"] {
+            position: absolute !important;
+            top: 100% !important;
+            left: 0 !important;
+            width: 100% !important;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+            background: white;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         
         .select-container {
@@ -407,6 +365,7 @@ def main():
             font-size: 1rem;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(229,9,20,0.3);
+            width: 100%;
         }
         
         .stButton>button:hover {
@@ -414,23 +373,29 @@ def main():
             box-shadow: 0 8px 25px rgba(229,9,20,0.4);
         }
         
-        /* Fix for select box dropdown */
-        .stSelectbox div[role="listbox"] {
-            max-height: 300px;
-            overflow-y: auto;
-            position: absolute;
-            z-index: 100;
-            background: white;
-            border-radius: 0 0 8px 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            width: 100%;
-            top: 100%;
-            margin-top: -1px;
+        body {
+            background: linear-gradient(to bottom, #1a1a2e 0%, #16213e 100%);
+            color: white;
         }
         
-        /* Ensure dropdown appears below the input */
-        .stSelectbox > div:first-child {
+        .section-title {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 20px 0 30px 0;
             position: relative;
+            display: inline-block;
+        }
+        
+        .section-title:after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: #e50914;
+            border-radius: 2px;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -469,10 +434,6 @@ def main():
     with st.container():
         st.markdown('<div class="select-container">', unsafe_allow_html=True)
         
-        # Create a session state to track if it's the first search
-        if 'first_search' not in st.session_state:
-            st.session_state.first_search = True
-            
         selected = st.selectbox(
             "🎞️ SELECT A MOVIE YOU LIKE:",
             movies['title'].sort_values(),
@@ -498,40 +459,35 @@ def main():
         """, unsafe_allow_html=True)
         num_recs = st.slider("Number of recommendations", 3, 20, 6)
     
-    # Use a form to handle the button click properly
-    with st.form("movie_form"):
-        submitted = st.form_submit_button("🔍 FIND SIMILAR MOVIES")
-        
-        if submitted:
-            st.session_state.first_search = False
-            with st.spinner("Analyzing preferences..."):
-                idx = movies[movies['title'] == selected].index[0]
-                sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
-                
-                st.markdown(f'<div class="section-title">Because you watched: <span style="color:#e50914">{movies.iloc[idx]["display_title"]}</span></div>', unsafe_allow_html=True)
-                
-                # Create grid layout instead of horizontal scrolling
-                grid_html = '<div class="movie-grid-container">'
-                for idx, score in sim_scores:
-                    grid_html += movie_card(movies.iloc[idx])
-                grid_html += '</div>'
-                
-                st.components.v1.html(grid_html, height=600)
-                
-                # Add footer
-                st.markdown("""
-                <div style="
-                    text-align:center;
-                    margin-top:4rem;
-                    padding:2rem 0;
-                    color:rgba(255,255,255,0.6);
-                    font-size:0.9rem;
-                    border-top:1px solid rgba(255,255,255,0.1);
-                ">
-                    <p>AI-Powered Movie Recommendation System</p>
-                    <p>Built with Python, Streamlit, and TMDB API</p>
-                </div>
-                """, unsafe_allow_html=True)
+    if st.button("🔍 FIND SIMILAR MOVIES"):
+        with st.spinner("Analyzing preferences..."):
+            idx = movies[movies['title'] == selected].index[0]
+            sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
+            
+            st.markdown(f'<div class="section-title">Because you watched: <span style="color:#e50914">{movies.iloc[idx]["display_title"]}</span></div>', unsafe_allow_html=True)
+            
+            # Create movie grid
+            grid_html = '<div class="movie-grid">'
+            for idx, score in sim_scores:
+                grid_html += movie_card(movies.iloc[idx])
+            grid_html += '</div>'
+            
+            st.markdown(grid_html, unsafe_allow_html=True)
+            
+            # Add footer
+            st.markdown("""
+            <div style="
+                text-align:center;
+                margin-top:4rem;
+                padding:2rem 0;
+                color:rgba(255,255,255,0.6);
+                font-size:0.9rem;
+                border-top:1px solid rgba(255,255,255,0.1);
+            ">
+                <p>AI-Powered Movie Recommendation System</p>
+                <p>Built with Python, Streamlit, and TMDB API</p>
+            </div>
+            """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
