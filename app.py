@@ -325,9 +325,10 @@ def main():
         .movie-row {
             display: flex;
             overflow-x: auto;
-            gap: 20px;
+            gap: 20px; /* Space between movie cards */
             padding: 20px 0;
             width: 100%;
+            align-items: flex-start; /* Align items to the top */
         }
         .movie-row::-webkit-scrollbar {
             height: 8px;
@@ -338,14 +339,46 @@ def main():
         }
         /* Movie Card Styling */
         .movie-card {
-            min-width: 200px;
+            min-width: 220px; /* Adjusted width for better fit */
             flex-shrink: 0;
+            background: #2a2a40; /* Background color for cards */
+            border-radius: 8px; /* Rounded corners */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2); /* Shadow effect */
+            overflow: hidden; /* Hide overflow */
         }
         .movie-poster {
             width: 100%;
-            height: 300px;
+            height: 330px; /* Fixed height for uniformity */
             object-fit: cover;
-            border-radius: 8px;
+            border-radius: 8px 8px 0 0; /* Rounded top corners */
+        }
+        .movie-info {
+            padding: 15px;
+            background: rgba(0,0,0,0.8); /* Dark background for text */
+        }
+        .movie-title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .movie-details {
+            font-size: 13px;
+            color: #e0e0e0;
+            margin-bottom: 12px;
+        }
+        .trailer-button {
+            display: inline-block;
+            background: #e50914;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            text-decoration: none !important;
+            font-weight: 500;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -414,14 +447,14 @@ def main():
                 <div class="movie-card">
                     <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" class="movie-poster"
                          onerror="this.src='{DEFAULT_THUMBNAIL}'">
-                    <div style="padding:10px;">
-                        <div style="font-weight:600; color:white; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    <div class="movie-info">
+                        <div class="movie-title">
                             {html.unescape(movie['display_title'])}
                         </div>
-                        <div style="font-size:13px; color:#aaa; margin:5px 0;">
+                        <div class="movie-details">
                             {movie['year']} • {', '.join(movie['genres'].split()[:2])}
                         </div>
-                        {f'<a href="{media["trailer"]["url"]}" target="_blank" style="display:inline-block; background:#e50914; color:white; padding:5px 10px; border-radius:4px; font-size:12px; text-decoration:none;">▶ Trailer</a>' if media.get('trailer') else ''}
+                        {f'<a href="{media["trailer"]["url"]}" target="_blank" class="trailer-button">▶ Trailer</a>' if media.get('trailer') else ''}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -430,3 +463,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
