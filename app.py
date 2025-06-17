@@ -239,7 +239,7 @@ def movie_card(movie):
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    return f"""
+    card_html = f"""
     <div style="
         width: 200px;
         margin-right: 20px;
@@ -291,6 +291,7 @@ def movie_card(movie):
         </div>
     </div>
     """
+    return card_html
 
 def main():
     st.set_page_config(layout="wide", page_title="Movie Recommendations", page_icon="🎬")
@@ -302,11 +303,14 @@ def main():
             padding: 1rem;
             margin-bottom: 1rem;
         }
-        .movie-row {
-            display: flex;
+        .movie-row-container {
+            width: 100%;
             overflow-x: auto;
+            white-space: nowrap;
             padding: 20px 0;
-            gap: 15px;
+        }
+        .movie-row {
+            display: inline-block;
         }
         .movie-row::-webkit-scrollbar {
             display: none;
@@ -318,6 +322,8 @@ def main():
         }
         body {
             background-color: #141414;
+            margin: 0;
+            padding: 0;
         }
     </style>
     <div class="header">
@@ -350,10 +356,10 @@ def main():
             st.markdown(f'<div class="section-title">Because you watched: {movies.iloc[idx]["display_title"]}</div>', unsafe_allow_html=True)
             
             # Horizontal scrolling row
-            st.markdown('<div class="movie-row">', unsafe_allow_html=True)
+            st.markdown('<div class="movie-row-container"><div class="movie-row">', unsafe_allow_html=True)
             for idx, score in sim_scores:
-                components.html(movie_card(movies.iloc[idx]), height=380)
-            st.markdown('</div>', unsafe_allow_html=True)
+                st.components.v1.html(movie_card(movies.iloc[idx]), height=380)
+            st.markdown('</div></div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
