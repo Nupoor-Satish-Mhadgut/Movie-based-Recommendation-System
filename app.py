@@ -260,6 +260,7 @@ def movie_card(movie):
                     height: 330px;
                     object-fit: cover;
                     transition: transform 0.5s ease;
+                    border-radius: 8px;
                  "
                  onerror="this.src='{DEFAULT_THUMBNAIL}'"
                  class="movie-poster"
@@ -273,6 +274,7 @@ def movie_card(movie):
                 padding: 60px 15px 15px;
                 opacity: 0;
                 transition: opacity 0.3s ease;
+                border-radius: 0 0 8px 8px;
             " class="movie-overlay">
                 <div style="
                     font-weight: 600;
@@ -290,21 +292,24 @@ def movie_card(movie):
                     {movie['year']} • {', '.join(movie['genres'].split()[:2])}
                 </div>
                 {f'''
-                <a href="{trailer['url']}" target="_blank"
-                   style="
-                        display: inline-block;
-                        background: #e50914;
-                        color: white;
-                        padding: 8px 16px;
-                        border-radius: 4px;
-                        font-size: 13px;
-                        text-decoration: none;
-                        font-weight: 500;
-                        transition: all 0.2s ease;
-                   "
-                   class="trailer-btn">
-                    ▶ Play Trailer
-                </a>
+                <div style="text-align: center;">
+                    <a href="{trailer['url']}" target="_blank"
+                       style="
+                            display: inline-block;
+                            background: #e50914;
+                            color: white;
+                            padding: 8px 16px;
+                            border-radius: 4px;
+                            font-size: 13px;
+                            text-decoration: none;
+                            font-weight: 500;
+                            transition: all 0.2s ease;
+                            border: none;
+                       "
+                       class="trailer-btn">
+                        ▶ Play Trailer
+                    </a>
+                </div>
                 ''' if trailer else ''}
             </div>
         </div>
