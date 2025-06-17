@@ -314,115 +314,40 @@ def main():
     
     st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
-        
-        * {
-            font-family: 'Poppins', sans-serif;
+        /* Fixed dropdown behavior */
+        div[data-baseweb="select"] > div {
+            z-index: 999;
         }
         
-        .header {
-            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-            padding: 2rem 3rem;
-            margin-bottom: 2rem;
-            border-radius: 0 0 20px 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        div[data-baseweb="popover"] {
+            z-index: 1000;
+            position: absolute !important;
+            top: 100% !important;
+            bottom: auto !important;
         }
         
+        /* Movie row styling */
         .movie-row {
             display: flex;
-            flex-wrap: nowrap;
             overflow-x: auto;
             padding: 20px 0;
             gap: 25px;
             scrollbar-width: thin;
-            scrollbar-color: #e50914 #2a2a40;
         }
         
-        .movie-row::-webkit-scrollbar {
-            height: 8px;
-        }
-        
-        .movie-row::-webkit-scrollbar-track {
-            background: #2a2a40;
-            border-radius: 10px;
-        }
-        
-        .movie-row::-webkit-scrollbar-thumb {
-            background-color: #e50914;
-            border-radius: 10px;
-        }
-        
-        /* Fixed dropdown behavior */
-        div[data-baseweb="select"] > div:first-child {
-            position: relative;
-        }
-        
-        div[data-baseweb="popover"] {
-            top: 100% !important;
-            bottom: auto !important;
-            position: absolute !important;
-            width: 100% !important;
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 100;
-        }
-        
-        .select-container {
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            padding: 2rem;
-            border-radius: 15px;
-            margin-bottom: 3rem;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .stButton>button {
-            background: linear-gradient(to right, #e50914 0%, #b00710 100%);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 30px;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(229,9,20,0.3);
-            width: 100%;
-        }
-        
-        .stButton>button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(229,9,20,0.4);
-        }
-        
+        /* Remove extra padding */
         .stApp {
-            background: linear-gradient(to bottom, #1a1a2e 0%, #16213e 100%);
-            color: white;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
         }
         
-        .section-title {
-            color: white;
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin: 20px 0 30px 0;
-            position: relative;
-            display: inline-block;
+        /* Button styling */
+        .stButton>button {
+            transition: all 0.3s ease;
         }
         
-        .section-title:after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 0;
-            width: 60px;
-            height: 4px;
-            background: #e50914;
-            border-radius: 2px;
-        }
-        
-        /* Remove blank space at the bottom */
-        .st-emotion-cache-1y4p8pa {
-            padding: 1rem 1rem 10px;
+        .stButton>button:active {
+            transform: scale(0.98);
         }
     </style>
     """, unsafe_allow_html=True)
@@ -457,64 +382,35 @@ def main():
     
     cosine_sim = prepare_model(movies)
     
-    # Movie Selection Section
     with st.container():
-        st.markdown('<div class="select-container">', unsafe_allow_html=True)
-        
         selected = st.selectbox(
             "🎞️ SELECT A MOVIE YOU LIKE:",
             movies['title'].sort_values(),
             index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0,
             key="movie_select"
         )
-        
-        st.markdown('</div>', unsafe_allow_html=True)
     
     with st.sidebar:
-        st.markdown("""
-        <div style="
-            background: rgba(255,255,255,0.1);
-            padding: 1.5rem;
-            border-radius: 15px;
-            margin-bottom: 2rem;
-        ">
-            <h3 style="color:white; margin-top:0;">⚙️ CONTROLS</h3>
-            <p style="color:rgba(255,255,255,0.7); font-size:0.9rem;">
-                Customize your recommendations
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
         num_recs = st.slider("Number of recommendations", 3, 20, 6)
     
     if st.button("🔍 FIND SIMILAR MOVIES", key="find_movies"):
+        st.session_state.button_clicked = True
+    
+    if st.session_state.button_clicked:
         with st.spinner("Analyzing preferences..."):
             idx = movies[movies['title'] == selected].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
             
             st.markdown(f'<div class="section-title">Because you watched: <span style="color:#e50914">{html.escape(movies.iloc[idx]["display_title"])}</span></div>', unsafe_allow_html=True)
             
-            # Create horizontal movie row with scroll
-            row_html = '<div class="movie-row">'
-            for idx, score in sim_scores:
-                row_html += movie_card(movies.iloc[idx])
-            row_html += '</div>'
-            
-            st.markdown(row_html, unsafe_allow_html=True)
-            
-            # Add footer
-            st.markdown("""
-            <div style="
-                text-align:center;
-                margin-top:4rem;
-                padding:2rem 0;
-                color:rgba(255,255,255,0.6);
-                font-size:0.9rem;
-                border-top:1px solid rgba(255,255,255,0.1);
-            ">
-                <p>AI-Powered Movie Recommendation System</p>
-                <p>Built with Python, Streamlit, and TMDB API</p>
-            </div>
-            """, unsafe_allow_html=True)
+            # Create horizontal movie row
+            cols = st.columns(1)
+            with cols[0]:
+                row_html = '<div class="movie-row">'
+                for idx, score in sim_scores:
+                    row_html += movie_card(movies.iloc[idx])
+                row_html += '</div>'
+                st.markdown(row_html, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
