@@ -315,74 +315,47 @@ def main():
     # Custom CSS with all fixes
     st.markdown("""
     <style>
-        /* 1. DROPDOWN FIX - Always opens downward */
-        div[data-baseweb="select"] > div {
-            z-index: 1;
-            position: relative;
+        /* 1. CENTERED DROPDOWN */
+        div[data-baseweb="select"] {
+            margin: 0 auto;
+            max-width: 500px;
         }
         div[data-baseweb="popover"] {
             z-index: 1001 !important;
-            position: absolute !important;
             top: 100% !important;
-            bottom: auto !important;
-            left: 0 !important;
-            width: 100% !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: 500px !important;
         }
 
-        /* 2. HORIZONTAL SCROLL CONTAINER */
-        .movie-row-container {
-            width: 100%;
+        /* 2. HORIZONTAL MOVIE ROW */
+        .movie-row {
+            display: flex;
             overflow-x: auto;
-            white-space: nowrap;
+            gap: 20px;
             padding: 20px 0;
-            scrollbar-width: thin;
+            width: 100%;
         }
-        .movie-row-container::-webkit-scrollbar {
+        .movie-row::-webkit-scrollbar {
             height: 8px;
         }
-        .movie-row-container::-webkit-scrollbar-thumb {
+        .movie-row::-webkit-scrollbar-thumb {
             background: #e50914;
             border-radius: 4px;
         }
 
         /* 3. MOVIE CARD STYLING */
         .movie-card {
-            display: inline-block;
-            width: 200px;
-            margin-right: 20px;
-            vertical-align: top;
+            min-width: 200px;
+            flex-shrink: 0;
         }
-
-        /* 4. TRAILER BUTTON FIX */
-        .trailer-btn {
-            display: inline-block;
-            background: #e50914;
-            color: white !important;
-            padding: 5px 10px;
-            border-radius: 3px;
-            font-size: 12px;
-            text-decoration: none !important;
-            border: none !important;
-        }
-
-        /* 5. GENERAL STYLING */
-        .header {
-            background: #141414;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-        body {
-            background-color: #141414;
-        }
-        .section-title {
-            color: white;
-            font-size: 1.3rem;
-            margin: 10px 0;
+        .movie-poster {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 8px;
         }
     </style>
-    <div class="header">
-        <h1 style='color:#e50914;text-align:center;margin:0;'>🎬 Movie Recommendation Engine</h1>
-    </div>
     """, unsafe_allow_html=True)
 
     # Initialize session state
@@ -391,85 +364,76 @@ def main():
     if 'selected_movie' not in st.session_state:
         st.session_state.selected_movie = ""
 
+    # Header
+    st.markdown("""
+    <div style="text-align:center; padding:2rem 0;">
+        <h1 style="color:#e50914;">🎬 Movie Recommendation Engine</h1>
+    </div>
+    """, unsafe_allow_html=True)
+
     movies = load_data()
     if movies is None:
         st.stop()
     
     cosine_sim = prepare_model(movies)
 
-    # Movie selection
-    selected = st.selectbox(
-        "🎞️ SELECT A MOVIE YOU LIKE:",
-        movies['title'].sort_values(),
-        index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0,
-        key="movie_select"
-    )
+    # Centered movie selection
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        selected = st.selectbox(
+            "🎞️ SELECT A MOVIE YOU LIKE:",
+            movies['title'].sort_values(),
+            index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0,
+            key="movie_select"
+        )
     
     # Number of recommendations in sidebar
     with st.sidebar:
-        num_recs = st.slider("Number of recommendations", 3, 20, 6, key="num_recs")
+        num_recs = st.slider("Number of recommendations", 3, 20, 6)
 
-    # Find similar movies button
-    if st.button("🔍 FIND SIMILAR MOVIES", key="find_button"):
-        st.session_state.show_recommendations = True
-        st.session_state.selected_movie = selected
+    # Find similar movies button (centered)
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        if st.button("🔍 FIND SIMILAR MOVIES", use_container_width=True):
+            st.session_state.show_recommendations = True
+            st.session_state.selected_movie = selected
 
     if st.session_state.show_recommendations and st.session_state.selected_movie:
         with st.spinner("Finding similar movies..."):
             idx = movies[movies['title'] == st.session_state.selected_movie].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
             
-            # Display header with properly escaped HTML
-            watched_title = html.unescape(movies.iloc[idx]["display_title"])
             st.markdown(
-                f'<div class="section-title">Because you watched: {watched_title}</div>',
+                f'<h3 style="color:white; text-align:center; margin:20px 0 30px;">'
+                f'Because you watched: <span style="color:#e50914">{html.unescape(movies.iloc[idx]["display_title"])}</span>'
+                f'</h3>',
                 unsafe_allow_html=True
             )
             
-            # Create horizontal scrolling container
-            row_html = '<div class="movie-row-container">'
+            # Horizontal movie row
+            st.markdown('<div class="movie-row">', unsafe_allow_html=True)
             
             for idx, score in sim_scores:
                 movie = movies.iloc[idx]
                 media = get_movie_media(movie)
                 
-                # Fix HTML entities
-                title = html.unescape(movie['display_title'])
-                genres = html.unescape(', '.join(movie['genres'].split()[:2]))
-                year = html.unescape(str(movie['year'])) if pd.notna(movie['year']) else "N/A"
-                
-                # Trailer button (only if available)
-                trailer_html = ""
-                if media.get('trailer'):
-                    trailer_url = media['trailer']['url']
-                    trailer_html = f'''
-                    <a href="{trailer_url}" target="_blank" class="trailer-btn">
-                        ▶ Play Trailer
-                    </a>
-                    '''
-                
-                # Movie card
-                row_html += f'''
+                st.markdown(f"""
                 <div class="movie-card">
-                    <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" 
-                         style="width:100%; height:300px; object-fit:cover; border-radius:4px;"
+                    <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" class="movie-poster"
                          onerror="this.src='{DEFAULT_THUMBNAIL}'">
-                    <div style="padding:10px 0; color:white;">
-                        <div style="font-weight:bold; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                            {title}
+                    <div style="padding:10px;">
+                        <div style="font-weight:600; color:white; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            {html.unescape(movie['display_title'])}
                         </div>
-                        <div style="font-size:12px; color:#d2d2d2; margin:5px 0;">
-                            {year} • {genres}
+                        <div style="font-size:13px; color:#aaa; margin:5px 0;">
+                            {movie['year']} • {', '.join(movie['genres'].split()[:2])}
                         </div>
-                        {trailer_html}
+                        {f'<a href="{media["trailer"]["url"]}" target="_blank" style="display:inline-block; background:#e50914; color:white; padding:5px 10px; border-radius:4px; font-size:12px; text-decoration:none;">▶ Trailer</a>' if media.get('trailer') else ''}
                     </div>
                 </div>
-                '''
+                """, unsafe_allow_html=True)
             
-            row_html += '</div>'
-            
-            # Render the horizontal scrolling row
-            st.components.v1.html(row_html, height=400)
+            st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
