@@ -284,9 +284,15 @@ def movie_card(movie):
                     padding: 5px 10px;
                     border-radius: 3px;
                     font-size: 12px;
-                    border: none;
-                    outline: none;
-                    box-shadow: none;
+                    text-decoration: none !important;
+                    border: none !important;
+                    outline: none !important;
+                    box-shadow: none !important;
+                    -webkit-tap-highlight-color: transparent;
+                    "
+                      onfocus='this.blur();'
+                      onmousedown='return false;'
+                      onmouseup='return true;'
                ">
                 ▶ Play
             </a>
