@@ -239,42 +239,89 @@ def movie_card(movie):
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
     trailer = media.get("trailer")
 
-    # Use columns to create a horizontal layout
-    with st.container():
-        col1, col2 = st.columns([1, 3])  # Adjust ratio as needed
-        with col1:
-            st.image(poster_url, width=150)  # Smaller poster size
-        with col2:
-            st.markdown(f"**{movie['display_title']} ({movie['year']})**")
-            st.caption(f"Genres: {', '.join(movie['genres'].split()[:3])}")
-            if trailer:
-                st.markdown(f"[Watch Trailer]({trailer['url']})")
+    return f"""
+    <div style="
+        width: 200px;
+        margin-right: 20px;
+        flex-shrink: 0;
+    ">
+        <img src="{poster_url}" 
+             style="
+                width: 100%;
+                height: 300px;
+                object-fit: cover;
+                border-radius: 4px;
+             "
+             onerror="this.src='{DEFAULT_THUMBNAIL}'"
+        >
+        <div style="
+            padding: 10px 0;
+            color: white;
+        ">
+            <div style="
+                font-weight: bold;
+                font-size: 14px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            ">
+                {movie['display_title']}
+            </div>
+            <div style="
+                font-size: 12px;
+                color: #d2d2d2;
+                margin: 5px 0;
+            ">
+                {movie['year']} • {', '.join(movie['genres'].split()[:2])}
+            </div>
+            {f'''
+            <a href="{trailer['url']}" target="_blank"
+               style="
+                    display: inline-block;
+                    background: #e50914;
+                    color: white;
+                    padding: 5px 10px;
+                    border-radius: 3px;
+                    font-size: 12px;
+                    text-decoration: none;
+               ">
+                ▶ Play
+            </a>
+            ''' if trailer else ''}
+        </div>
+    </div>
+    """
 
 def main():
-    st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
+    st.set_page_config(layout="wide", page_title="Movie Recommendations", page_icon="🎬")
     
-    # Header
     st.markdown("""
     <style>
         .header {
-            background: linear-gradient(135deg,#6e48aa 0%,#9d50bb 100%);
+            background: #141414;
             padding: 1rem;
-            border-radius: 8px;
             margin-bottom: 1rem;
-            color: white;
         }
         .movie-row {
             display: flex;
             overflow-x: auto;
-            gap: 20px;
-            padding: 10px 0;
+            padding: 20px 0;
+            gap: 15px;
         }
         .movie-row::-webkit-scrollbar {
             display: none;
         }
+        .section-title {
+            color: white;
+            font-size: 1.3rem;
+            margin: 10px 0;
+        }
+        body {
+            background-color: #141414;
+        }
     </style>
     <div class="header">
-        <h1 style='text-align:center;margin:0;'>🎬 Nupoor Mhadgut's Movie Recommendation Engine</h1>
+        <h1 style='color:#e50914;text-align:center;margin:0;'>Movie Recommendations</h1>
     </div>
     """, unsafe_allow_html=True)
     
@@ -284,7 +331,7 @@ def main():
     
     cosine_sim = prepare_model(movies)
     
-    # Move movie selection to main page
+    # Movie selection in main page
     selected = st.selectbox(
         "🎞️ Select a movie you like:",
         movies['title'].sort_values(),
@@ -292,20 +339,20 @@ def main():
     )
     
     with st.sidebar:
-        st.markdown("### 🎛️ Controls")
-        num_recs = st.slider("Number of recommendations", 3, 10, 6)
+        st.markdown("### Controls")
+        num_recs = st.slider("Number of recommendations", 3, 20, 6)
     
     if st.button("🔍 Find Similar Movies"):
         with st.spinner("Finding recommendations..."):
             idx = movies[movies['title'] == selected].index[0]
             sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
             
-            st.markdown(f"## Similar to: **{movies.iloc[idx]['display_title']}**")
+            st.markdown(f'<div class="section-title">Because you watched: {movies.iloc[idx]["display_title"]}</div>', unsafe_allow_html=True)
             
             # Horizontal scrolling row
             st.markdown('<div class="movie-row">', unsafe_allow_html=True)
             for idx, score in sim_scores:
-                movie_card(movies.iloc[idx])
+                components.html(movie_card(movies.iloc[idx]), height=380)
             st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
