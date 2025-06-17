@@ -233,7 +233,6 @@ def get_movie_media(movie):
         'trailer': get_best_trailer(movie['title'], movie.get('year'))
     }
 
-
 def movie_card(movie):
     media = get_movie_media(movie)
     poster_url = media.get("poster", DEFAULT_THUMBNAIL)
@@ -244,6 +243,7 @@ def movie_card(movie):
         display: inline-block;
         width: 220px;
         margin-right: 25px;
+        margin-bottom: 30px;
         vertical-align: top;
         transition: all 0.3s ease;
     ">
@@ -259,7 +259,7 @@ def movie_card(movie):
                     height: 330px;
                     object-fit: cover;
                     transition: transform 0.5s ease;
-                    display: block;  /* Fix for line issues */
+                    display: block;
                  "
                  onerror="this.src='{DEFAULT_THUMBNAIL}'"
             >
@@ -335,12 +335,11 @@ def main():
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
         
-        .movie-row-container {
-            width: 100%;
-            overflow-x: auto;
-            white-space: nowrap;
-            padding: 30px 0;
-            margin: 0 -15px;
+        .movie-grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 25px;
+            padding: 20px 0;
         }
         
         .movie-card:hover {
@@ -415,15 +414,23 @@ def main():
             box-shadow: 0 8px 25px rgba(229,9,20,0.4);
         }
         
-        /* Hide scrollbar but keep functionality */
-        .movie-row-container::-webkit-scrollbar {
-            height: 8px;
-            background: transparent;
+        /* Fix for select box dropdown */
+        .stSelectbox div[role="listbox"] {
+            max-height: 300px;
+            overflow-y: auto;
+            position: absolute;
+            z-index: 100;
+            background: white;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 100%;
+            top: 100%;
+            margin-top: -1px;
         }
         
-        .movie-row-container::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.2);
-            border-radius: 4px;
+        /* Ensure dropdown appears below the input */
+        .stSelectbox > div:first-child {
+            position: relative;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -461,11 +468,18 @@ def main():
     # Movie Selection Section
     with st.container():
         st.markdown('<div class="select-container">', unsafe_allow_html=True)
+        
+        # Create a session state to track if it's the first search
+        if 'first_search' not in st.session_state:
+            st.session_state.first_search = True
+            
         selected = st.selectbox(
             "🎞️ SELECT A MOVIE YOU LIKE:",
             movies['title'].sort_values(),
-            index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0
+            index=movies['title'].tolist().index("Toy Story (1995)") if "Toy Story (1995)" in movies['title'].values else 0,
+            key="movie_select"
         )
+        
         st.markdown('</div>', unsafe_allow_html=True)
     
     with st.sidebar:
@@ -484,35 +498,40 @@ def main():
         """, unsafe_allow_html=True)
         num_recs = st.slider("Number of recommendations", 3, 20, 6)
     
-    if st.button("🔍 FIND SIMILAR MOVIES"):
-        with st.spinner("Analyzing preferences..."):
-            idx = movies[movies['title'] == selected].index[0]
-            sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
-            
-            st.markdown(f'<div class="section-title">Because you watched: <span style="color:#e50914">{movies.iloc[idx]["display_title"]}</span></div>', unsafe_allow_html=True)
-            
-            # Create horizontal scrolling row
-            row_html = '<div class="movie-row-container">'
-            for idx, score in sim_scores:
-                row_html += movie_card(movies.iloc[idx])
-            row_html += '</div>'
-            
-            st.components.v1.html(row_html, height=400)
-            
-            # Add footer
-            st.markdown("""
-            <div style="
-                text-align:center;
-                margin-top:4rem;
-                padding:2rem 0;
-                color:rgba(255,255,255,0.6);
-                font-size:0.9rem;
-                border-top:1px solid rgba(255,255,255,0.1);
-            ">
-                <p>AI-Powered Movie Recommendation System</p>
-                <p>Built with Python, Streamlit, and TMDB API</p>
-            </div>
-            """, unsafe_allow_html=True)
+    # Use a form to handle the button click properly
+    with st.form("movie_form"):
+        submitted = st.form_submit_button("🔍 FIND SIMILAR MOVIES")
+        
+        if submitted:
+            st.session_state.first_search = False
+            with st.spinner("Analyzing preferences..."):
+                idx = movies[movies['title'] == selected].index[0]
+                sim_scores = sorted(list(enumerate(cosine_sim[idx])), key=lambda x: x[1], reverse=True)[1:num_recs+1]
+                
+                st.markdown(f'<div class="section-title">Because you watched: <span style="color:#e50914">{movies.iloc[idx]["display_title"]}</span></div>', unsafe_allow_html=True)
+                
+                # Create grid layout instead of horizontal scrolling
+                grid_html = '<div class="movie-grid-container">'
+                for idx, score in sim_scores:
+                    grid_html += movie_card(movies.iloc[idx])
+                grid_html += '</div>'
+                
+                st.components.v1.html(grid_html, height=600)
+                
+                # Add footer
+                st.markdown("""
+                <div style="
+                    text-align:center;
+                    margin-top:4rem;
+                    padding:2rem 0;
+                    color:rgba(255,255,255,0.6);
+                    font-size:0.9rem;
+                    border-top:1px solid rgba(255,255,255,0.1);
+                ">
+                    <p>AI-Powered Movie Recommendation System</p>
+                    <p>Built with Python, Streamlit, and TMDB API</p>
+                </div>
+                """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
