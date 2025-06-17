@@ -235,7 +235,7 @@ def get_movie_media(movie):
 def main():
     st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
     
-    # Custom CSS
+    # Custom CSS with normalized poster sizes
     st.markdown("""
     <style>
         .movie-row {
@@ -255,12 +255,19 @@ def main():
             border-radius: 4px;
         }
         .movie-card {
-            min-width: 220px;
+            min-width: 200px;
             flex-shrink: 0;
             transition: transform 0.2s;
         }
         .movie-card:hover {
             transform: scale(1.03);
+        }
+        .movie-card img {
+            width: 185px;
+            height: 278px;
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
         .trailer-btn {
             display: inline-block;
@@ -395,7 +402,6 @@ def main():
                 st.markdown(f"""
                 <div class="movie-card">
                     <img src="{media.get('poster', DEFAULT_THUMBNAIL)}" 
-                         style="width:100%; height:300px; object-fit:cover; border-radius:8px;"
                          onerror="this.src='{DEFAULT_THUMBNAIL}'">
                     <div style="padding:15px;">
                         <div style="font-weight:600; color:white; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
