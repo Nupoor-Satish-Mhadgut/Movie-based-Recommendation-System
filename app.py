@@ -321,7 +321,7 @@ def main():
     # Header
     st.markdown("""
     <div style="text-align:center; padding:2rem 0;">
-        <h1 style="color:#e50914;">🎬 Movie Recommendation Engine</h1>
+        <h1 style="color:#e50914;">🎬 Nupoor's Movie Recommendation Engine</h1>
     </div>
     """, unsafe_allow_html=True)
 
