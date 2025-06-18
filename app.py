@@ -233,7 +233,7 @@ def get_movie_media(movie):
     }
 
 def main():
-    st.set_page_config(layout="wide", page_title="🎬 Movie Recommendation Engine", page_icon="🎥")
+    st.set_page_config(layout="wide", page_title="🎬 Nupoor's Movie Recommendation Engine", page_icon="🎥")
     
     # Custom CSS with normalized poster sizes
     st.markdown("""
